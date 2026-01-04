@@ -26,9 +26,26 @@ type ListResponse = {
   error?: { message: string };
 };
 
+type Draft = {
+  transaction_date: string;
+  debit_account: string;
+  debit_vendor: string;
+  debit_amount: string;
+  debit_tax: string;
+  credit_account: string;
+  credit_amount: string;
+  description: string;
+  memo: string;
+};
+
 function toDateInputValue(v: string) {
   if (!v) return "";
   return v.includes("T") ? v.slice(0, 10) : v;
+}
+
+function toInt(v: string): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.trunc(n) : 0;
 }
 
 export default function RecordEditPage() {
@@ -43,7 +60,7 @@ export default function RecordEditPage() {
   const [rows, setRows] = useState<LedgerRow[]>([]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<any>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
 
   const canPrev = offset > 0;
   const canNext = offset + limit < total;
@@ -65,8 +82,8 @@ export default function RecordEditPage() {
       if (!res.ok || !json.ok) throw new Error(json.error?.message ?? `HTTP ${res.status}`);
       setRows(json.rows);
       setTotal(json.total);
-    } catch (e: any) {
-      setErr(e?.message ?? "Failed to load");
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -99,19 +116,21 @@ export default function RecordEditPage() {
 
   async function saveEdit(journalId: string) {
     if (!draft) return;
+
     setLoading(true);
     setErr(null);
+
     try {
       const payload = {
         transaction_date: draft.transaction_date,
-        debit_account: String(draft.debit_account ?? ""),
-        debit_vendor: String(draft.debit_vendor ?? ""),
-        debit_amount: Number(draft.debit_amount ?? 0),
-        debit_tax: Number(draft.debit_tax ?? 0),
-        credit_account: String(draft.credit_account ?? ""),
-        credit_amount: Number(draft.credit_amount ?? 0),
-        description: String(draft.description ?? ""),
-        memo: String(draft.memo ?? ""),
+        debit_account: draft.debit_account,
+        debit_vendor: draft.debit_vendor,
+        debit_amount: toInt(draft.debit_amount),
+        debit_tax: toInt(draft.debit_tax),
+        credit_account: draft.credit_account,
+        credit_amount: toInt(draft.credit_amount),
+        description: draft.description,
+        memo: draft.memo,
       };
 
       const res = await fetch(`/api/ledger/${journalId}`, {
@@ -119,13 +138,13 @@ export default function RecordEditPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const json = await res.json().catch(() => ({}));
+      const json = await res.json().catch(() => ({} as { ok?: boolean; error?: { message?: string } }));
       if (!res.ok || !json.ok) throw new Error(json?.error?.message ?? `HTTP ${res.status}`);
 
       cancelEdit();
       await load();
-    } catch (e: any) {
-      setErr(e?.message ?? "Failed to save");
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -139,11 +158,11 @@ export default function RecordEditPage() {
     setErr(null);
     try {
       const res = await fetch(`/api/ledger/${journalId}`, { method: "DELETE" });
-      const json = await res.json().catch(() => ({}));
+      const json = await res.json().catch(() => ({} as { ok?: boolean; error?: { message?: string } }));
       if (!res.ok || !json.ok) throw new Error(json?.error?.message ?? `HTTP ${res.status}`);
       await load();
-    } catch (e: any) {
-      setErr(e?.message ?? "Failed to delete");
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -223,6 +242,7 @@ export default function RecordEditPage() {
           <tbody>
             {rows.map((r) => {
               const isEditing = editingId === r.journal_id;
+
               return (
                 <tr key={r.journal_id} style={{ borderTop: "1px solid #ddd" }}>
                   <td>{r.journal_id}</td>
@@ -231,7 +251,9 @@ export default function RecordEditPage() {
                     {isEditing ? (
                       <input
                         value={draft?.transaction_date ?? ""}
-                        onChange={(e) => setDraft({ ...draft, transaction_date: e.target.value })}
+                        onChange={(e) =>
+                          setDraft((d) => (d ? { ...d, transaction_date: e.target.value } : d))
+                        }
                         style={{ width: 120 }}
                       />
                     ) : (
@@ -243,7 +265,9 @@ export default function RecordEditPage() {
                     {isEditing ? (
                       <input
                         value={draft?.debit_account ?? ""}
-                        onChange={(e) => setDraft({ ...draft, debit_account: e.target.value })}
+                        onChange={(e) =>
+                          setDraft((d) => (d ? { ...d, debit_account: e.target.value } : d))
+                        }
                         style={{ width: 140 }}
                       />
                     ) : (
@@ -255,7 +279,9 @@ export default function RecordEditPage() {
                     {isEditing ? (
                       <input
                         value={draft?.debit_vendor ?? ""}
-                        onChange={(e) => setDraft({ ...draft, debit_vendor: e.target.value })}
+                        onChange={(e) =>
+                          setDraft((d) => (d ? { ...d, debit_vendor: e.target.value } : d))
+                        }
                         style={{ width: 180 }}
                       />
                     ) : (
@@ -267,7 +293,9 @@ export default function RecordEditPage() {
                     {isEditing ? (
                       <input
                         value={draft?.debit_amount ?? "0"}
-                        onChange={(e) => setDraft({ ...draft, debit_amount: e.target.value })}
+                        onChange={(e) =>
+                          setDraft((d) => (d ? { ...d, debit_amount: e.target.value } : d))
+                        }
                         style={{ width: 120, textAlign: "right" }}
                         inputMode="numeric"
                       />
@@ -280,7 +308,9 @@ export default function RecordEditPage() {
                     {isEditing ? (
                       <input
                         value={draft?.description ?? ""}
-                        onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+                        onChange={(e) =>
+                          setDraft((d) => (d ? { ...d, description: e.target.value } : d))
+                        }
                         style={{ width: 260 }}
                       />
                     ) : (
@@ -292,7 +322,9 @@ export default function RecordEditPage() {
                     {isEditing ? (
                       <input
                         value={draft?.memo ?? ""}
-                        onChange={(e) => setDraft({ ...draft, memo: e.target.value })}
+                        onChange={(e) =>
+                          setDraft((d) => (d ? { ...d, memo: e.target.value } : d))
+                        }
                         style={{ width: 260 }}
                       />
                     ) : (
@@ -337,9 +369,6 @@ export default function RecordEditPage() {
           </tbody>
         </table>
       </div>
-
-      <p style={{ color: "#666", fontSize: 12 }}>
-      </p>
     </main>
   );
 }

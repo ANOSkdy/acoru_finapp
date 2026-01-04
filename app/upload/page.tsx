@@ -27,10 +27,9 @@ export default function UploadPage() {
           handleUploadUrl: "/api/blob/upload",
           clientPayload: JSON.stringify({ receiptId }),
           multipart: true,
-          access: "public", // ✅ 追加
+          access: "public",
         });
 
-        // ローカルでも確実にDBに入るよう register を呼ぶ（冪等）
         const res = await fetch("/api/receipts/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -45,13 +44,14 @@ export default function UploadPage() {
         });
 
         if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
+          const j = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
           throw new Error(j?.error?.message ?? `register failed: ${res.status}`);
         }
 
         next.push({ receiptId, fileName: file.name, ok: true });
-      } catch (err: any) {
-        next.push({ receiptId, fileName: file.name, ok: false, message: err?.message ?? "error" });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        next.push({ receiptId, fileName: file.name, ok: false, message });
       }
     }
 

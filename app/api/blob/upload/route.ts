@@ -2,7 +2,6 @@ import { handleUpload } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { env } from "@/lib/env";
-import { upsertReceiptQueue } from "@/lib/receiptQueue";
 
 export const runtime = "nodejs";
 
@@ -21,35 +20,22 @@ export async function POST(request: Request) {
         const parsed = PayloadSchema.parse(JSON.parse(clientPayload ?? "{}"));
 
         return {
-          // jpg / jpeg / pdf
           allowedContentTypes: ["image/jpeg", "application/pdf"],
           maximumSizeInBytes: env.MAX_FILE_BYTES,
           tokenPayload: JSON.stringify({ receiptId: parsed.receiptId }),
-          access: "public", // ✅ 追加
+          access: "public",
         };
       },
-      onUploadCompleted: async ({ blob, tokenPayload }) => {
-        // ローカル開発ではここが到達しない場合がある（Blobがlocalhostにコールバックできないため）
-        // そのため register API を別で叩く方式を併用する（冪等なので二重でもOK）
-        const parsed = PayloadSchema.parse(JSON.parse(tokenPayload ?? "{}"));
-
-        await upsertReceiptQueue({
-          receiptId: parsed.receiptId,
-          blobUrl: blob.url,
-          pathname: blob.pathname,
-          fileName: blob.pathname.split("/").pop() ?? blob.pathname,
-          mimeType: blob.contentType ?? "application/octet-stream",
-          sizeBytes: blob.size,
-        });
+      // NOTE: DB queue is created by /api/receipts/register (client calls it with sizeBytes).
+      onUploadCompleted: async () => {
+        return;
       },
     });
 
     return NextResponse.json(jsonResponse);
-  } catch (e: any) {
-    console.error("blob upload route error", e);
-    return NextResponse.json(
-      { ok: false, error: { message: e?.message ?? "upload failed" } },
-      { status: 400 }
-    );
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("blob upload route error", message);
+    return NextResponse.json({ ok: false, error: { message } }, { status: 400 });
   }
 }

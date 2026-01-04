@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { pool } from "@/lib/db";
 
@@ -35,6 +35,7 @@ export async function GET(req: Request) {
       : "";
 
     const countSql = `SELECT COUNT(*)::int AS total FROM expense_ledger ${where};`;
+
     const listSqlNoQ = `
       SELECT
         journal_id, transaction_date,
@@ -47,6 +48,7 @@ export async function GET(req: Request) {
       ORDER BY created_at DESC
       LIMIT $1 OFFSET $2;
     `;
+
     const listSqlWithQ = `
       SELECT
         journal_id, transaction_date,
@@ -65,8 +67,8 @@ export async function GET(req: Request) {
     const listParams = q ? [like, parsed.limit, parsed.offset] : [parsed.limit, parsed.offset];
 
     const [countRes, listRes] = await Promise.all([
-      pool.query(countSql, countParams),
-      pool.query(q ? listSqlWithQ : listSqlNoQ, listParams),
+      pool.query<{ total: number }>(countSql, countParams),
+      pool.query(listSqlWithQ && q ? listSqlWithQ : listSqlNoQ, listParams),
     ]);
 
     return NextResponse.json({
@@ -76,10 +78,11 @@ export async function GET(req: Request) {
       offset: parsed.offset,
       rows: listRes.rows,
     });
-  } catch (e: any) {
-    console.error("GET /api/ledger error", e);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("GET /api/ledger error", message);
     return NextResponse.json(
-      { ok: false, error: { message: e?.message ?? "Internal error" } },
+      { ok: false, error: { message } },
       { status: 500 }
     );
   }

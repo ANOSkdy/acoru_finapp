@@ -6,6 +6,12 @@ import { analyzeReceipt } from "@/lib/gemini";
 import { pool } from "@/lib/db";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function errorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  return String(e);
+}
 
 async function fetchAsBuffer(url: string): Promise<Buffer> {
   const r = await fetch(url);
@@ -20,7 +26,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  const lockedBy = `vercel-cron-${process.env.VERCEL_REGION ?? "local"}`;
+  const lockedBy = `cron-${process.env.VERCEL_REGION ?? "local"}`;
   const acquired = await acquireCronLock("process-receipts", env.CRON_LOCK_TTL_SECONDS, lockedBy);
   if (!acquired) return NextResponse.json({ ok: true, skipped: true, reason: "locked" });
 
@@ -35,15 +41,10 @@ export async function GET(req: Request) {
         const buf = await fetchAsBuffer(t.blob_url);
         const extracted = await analyzeReceipt(buf, t.mime_type);
 
-        // TODO: ここで社内ルール decideDebitAccount を適用して借方科目を確定する（設計書通り）
-
-        // TODO: expense_ledger INSERT（既存カラムに合わせて調整）
-        // 例：drive_file_id相当があるなら receipt_id を入れる（冪等キー用途）
         const client = await pool.connect();
         try {
           await client.query("BEGIN");
 
-          // 仮の例（あなたのテーブル定義に合わせて変更必須）
           const insert = await client.query<{ journal_id: number }>(
             `INSERT INTO expense_ledger (
               transaction_date,
@@ -93,16 +94,15 @@ export async function GET(req: Request) {
           await markProcessed(t.receipt_id, journalId, extracted);
 
           processed++;
-        } catch (e) {
+        } catch (e: unknown) {
           await client.query("ROLLBACK");
           throw e;
         } finally {
           client.release();
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         failed++;
-        await markError(t.receipt_id, e?.message ?? "unknown error", 600);
-        // 既存の receipt_processing_errors にも INSERT するならここで追加（設計書通り）
+        await markError(t.receipt_id, errorMessage(e), 600);
       }
     }
 

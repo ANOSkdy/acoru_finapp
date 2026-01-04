@@ -48,11 +48,13 @@ export async function analyzeReceipt(buffer: Buffer, mimeType: string): Promise<
 
 ルール:
 - transaction_date は YYYY-MM-DD。複数日付がある場合は 発行日 > 利用日 > 注文日。
-- total_amount は税込合計（円、整数）。読めない場合は 0 にせず推定しない（可能な範囲で読み取る）。
+- total_amount は税込合計（円、整数）。読めない場合は推定しない。
 - tax_amount は消費税額（円、整数）。記載がなければ 0。
 - invoice_category は 適格請求書発行事業者登録番号があれば "適格"、なければ "区分記載"。
 - suggested_debit_account は品目から推定（迷う場合は "雑費"）。
 - items_summary は社内ルール判定に使うので「店名＋主要品目」を短く。
+
+出力はJSONのみ。
   `.trim();
 
   const base64 = buffer.toString("base64");
@@ -62,10 +64,7 @@ export async function analyzeReceipt(buffer: Buffer, mimeType: string): Promise<
     contents: [
       {
         role: "user",
-        parts: [
-          { text: prompt },
-          { inlineData: { mimeType, data: base64 } },
-        ],
+        parts: [{ text: prompt }, { inlineData: { mimeType, data: base64 } }],
       },
     ],
     config: {
@@ -74,6 +73,15 @@ export async function analyzeReceipt(buffer: Buffer, mimeType: string): Promise<
     },
   });
 
-  const text = res.text;
-  return JSON.parse(text) as GeminiExtract;
+  const text = res.text ?? "";
+  if (!text.trim()) {
+    throw new Error("Gemini returned empty response text");
+  }
+
+  try {
+    return JSON.parse(text) as GeminiExtract;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(`Failed to parse Gemini JSON: ${msg}`);
+  }
 }

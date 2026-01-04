@@ -1,15 +1,14 @@
 import { Pool } from "@neondatabase/serverless";
 import { env } from "./env";
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __pool: Pool | undefined;
-}
+const globalForPool = globalThis as unknown as { __pool?: Pool };
 
 export const pool =
-  global.__pool ??
+  globalForPool.__pool ??
   new Pool({
     connectionString: env.DATABASE_URL,
   });
 
-if (process.env.NODE_ENV !== "production") global.__pool = pool;
+if (process.env.NODE_ENV !== "production") {
+  globalForPool.__pool = pool;
+}

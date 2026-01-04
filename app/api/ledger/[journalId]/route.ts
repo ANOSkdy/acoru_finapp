@@ -1,4 +1,3 @@
-// app/api/ledger/[journalId]/route.ts
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { pool } from "@/lib/db";
@@ -8,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 const PatchSchema = z
   .object({
-    transaction_date: z.string().optional(), // "YYYY-MM-DD" or ISO
+    transaction_date: z.string().optional(),
     debit_account: z.string().optional(),
     debit_vendor: z.string().optional(),
     debit_amount: z.coerce.number().int().nonnegative().optional(),
@@ -35,21 +34,19 @@ function jsonError(message: string, status = 400, details?: unknown) {
   return NextResponse.json({ ok: false, error: { message, details } }, { status });
 }
 
+// Next.js 16: params is a Promise
 type RouteContext = { params: Promise<{ journalId: string }> };
 
 export async function PATCH(req: Request, { params }: RouteContext) {
   try {
     const { journalId } = await params;
-    const id = journalId;
+    if (!/^\d+$/.test(journalId)) return jsonError("Invalid journalId", 400);
 
-    if (!/^\d+$/.test(id)) return jsonError("Invalid journalId", 400);
-
-    // PowerShell/環境差で req.json() が空扱いになることがあるため text→parse に統一
+    // Use text->JSON.parse for robustness
     const raw = await req.text();
-    console.log("PATCH raw body:", (raw ?? "").slice(0, 2000));
+    const trimmed = (raw ?? "").trim();
 
     let parsed: unknown = {};
-    const trimmed = (raw ?? "").trim();
     if (trimmed) {
       try {
         parsed = JSON.parse(trimmed);
@@ -61,14 +58,13 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     const body = PatchSchema.parse(parsed);
 
     const sets: string[] = [];
-    const values: any[] = [];
+    const values: Array<string | number> = [];
     let i = 1;
 
     if (body.transaction_date !== undefined) {
       sets.push(`transaction_date = $${i++}::date`);
       values.push(normalizeDate(body.transaction_date));
     }
-
     if (body.debit_account !== undefined) {
       sets.push(`debit_account = $${i++}`);
       values.push(body.debit_account);
@@ -124,49 +120,43 @@ export async function PATCH(req: Request, { params }: RouteContext) {
 
     sets.push(`processed_at = now()`);
 
-    // journal_id が bigint でも確実に当てる
-    values.push(id);
-
+    values.push(journalId);
     const sql = `
       UPDATE expense_ledger
       SET ${sets.join(", ")}
       WHERE journal_id::text = $${i}
-      RETURNING
-        journal_id, transaction_date,
-        debit_account, debit_vendor, debit_amount, debit_tax, debit_invoice_category,
-        credit_account, credit_vendor, credit_amount, credit_tax, credit_invoice_category,
-        description, memo,
-        drive_file_id, drive_file_name, drive_mime_type,
-        created_at, processed_at;
+      RETURNING journal_id, debit_account, processed_at;
     `;
 
     const r = await pool.query(sql, values);
     if (r.rowCount === 0) return jsonError("Not found", 404);
 
     return NextResponse.json({ ok: true, row: r.rows[0] });
-  } catch (e: any) {
-    if (e?.name === "ZodError") return jsonError("Validation error", 400, e?.issues ?? e);
-    console.error("PATCH /api/ledger/[journalId] error", e);
-    return jsonError(e?.message ?? "Internal error", 500);
+  } catch (e: unknown) {
+    if (e && typeof e === "object" && "name" in e && (e as { name?: string }).name === "ZodError") {
+      return jsonError("Validation error", 400, e);
+    }
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("PATCH /api/ledger/[journalId] error", message);
+    return jsonError(message, 500);
   }
 }
 
 export async function DELETE(_req: Request, { params }: RouteContext) {
   try {
     const { journalId } = await params;
-    const id = journalId;
-
-    if (!/^\d+$/.test(id)) return jsonError("Invalid journalId", 400);
+    if (!/^\d+$/.test(journalId)) return jsonError("Invalid journalId", 400);
 
     const r = await pool.query(
       `DELETE FROM expense_ledger WHERE journal_id::text = $1 RETURNING journal_id;`,
-      [id]
+      [journalId]
     );
     if (r.rowCount === 0) return jsonError("Not found", 404);
 
     return NextResponse.json({ ok: true, journal_id: r.rows[0].journal_id });
-  } catch (e: any) {
-    console.error("DELETE /api/ledger/[journalId] error", e);
-    return jsonError(e?.message ?? "Internal error", 500);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("DELETE /api/ledger/[journalId] error", message);
+    return jsonError(message, 500);
   }
 }

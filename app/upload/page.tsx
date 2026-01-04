@@ -65,7 +65,11 @@ export default function UploadPage() {
 
       <form onSubmit={onSubmit}>
         <input name="files" type="file" accept=".jpg,.jpeg,.pdf" multiple />
-        <button type="submit" disabled={busy} style={{ marginLeft: 8 }}>
+        <button
+          type="submit"
+          disabled={busy}
+          style={{ marginLeft: 8, backgroundColor: "royalblue", color: "#fff" }}
+        >
           {busy ? "Uploading..." : "Upload"}
         </button>
       </form>

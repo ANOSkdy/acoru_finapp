@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { upload } from "@vercel/blob/client";
+import Link from "next/link";
 
 type Result = { receiptId: string; fileName: string; ok: boolean; message?: string };
 
@@ -63,9 +64,21 @@ export default function UploadPage() {
     <main style={{ padding: 24 }}>
       <h1>領収書アップロード</h1>
 
+      <div style={{ marginBottom: 16 }}>
+        <Link href="/recordedit">
+          <button style={{ padding: "8px 12px", backgroundColor: "royalblue", color: "#fff" }}>
+            レコード編集へ
+          </button>
+        </Link>
+      </div>
+
       <form onSubmit={onSubmit}>
         <input name="files" type="file" accept=".jpg,.jpeg,.pdf" multiple />
-        <button type="submit" disabled={busy} style={{ marginLeft: 8 }}>
+        <button
+          type="submit"
+          disabled={busy}
+          style={{ marginLeft: 8, backgroundColor: "royalblue", color: "#fff" }}
+        >
           {busy ? "Uploading..." : "Upload"}
         </button>
       </form>

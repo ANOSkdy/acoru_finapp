@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 type LedgerRow = {
   journal_id: string;
@@ -171,6 +172,14 @@ export default function RecordEditPage() {
   return (
     <main style={{ padding: 24, display: "grid", gap: 12 }}>
       <h1>Record Edit (expense_ledger)</h1>
+
+      <div>
+        <Link href="/upload">
+          <button style={{ padding: "8px 12px", backgroundColor: "royalblue", color: "#fff" }}>
+            アップロードページへ
+          </button>
+        </Link>
+      </div>
 
       <section style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <input

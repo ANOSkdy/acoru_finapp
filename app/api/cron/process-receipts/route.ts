@@ -21,6 +21,13 @@ async function fetchAsBuffer(url: string): Promise<Buffer> {
 }
 
 export async function GET(req: Request) {
+  if (!env.CRON_SECRET) {
+    return NextResponse.json(
+      { ok: false, error: "cron secret is not configured" },
+      { status: 500 }
+    );
+  }
+
   const auth = req.headers.get("authorization") ?? "";
   if (auth !== `Bearer ${env.CRON_SECRET}`) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });

@@ -8,7 +8,7 @@ const EnvSchema = z.object({
   GEMINI_API_KEY: z.string().min(1),
   GEMINI_MODEL: z.string().min(1).default("gemini-3-flash-preview"),
 
-  CRON_SECRET: z.string().min(16),
+  CRON_SECRET: z.string().min(16).optional(),
 
   MAX_FILE_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
   MAX_FILES_PER_RUN: z.coerce.number().int().positive().default(50),

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 type LedgerRow = {
   journal_id: string;
@@ -45,12 +45,13 @@ function toInt(v: string): number {
   return Number.isFinite(n) ? Math.trunc(n) : 0;
 }
 
-export default function RecordEditDetailPage({
-  params,
-}: {
-  params: { journalId: string };
-}) {
-  const { journalId } = params;
+export default function RecordEditDetailPage() {
+  const params = useParams<{ journalId?: string | string[] }>();
+  const journalId = useMemo(() => {
+    const value = params?.journalId;
+    if (!value) return null;
+    return Array.isArray(value) ? value[0] ?? null : value;
+  }, [params]);
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
@@ -60,12 +61,12 @@ export default function RecordEditDetailPage({
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
 
-  async function load() {
+  async function load(currentJournalId: string) {
     setLoading(true);
     setErr(null);
     setStatus(null);
     try {
-      const res = await fetch(`/api/ledger/${journalId}`, { cache: "no-store" });
+      const res = await fetch(`/api/ledger/${currentJournalId}`, { cache: "no-store" });
       const json = (await res.json()) as DetailResponse;
       if (!res.ok || !json.ok || !json.row) {
         throw new Error(json.error?.message ?? `HTTP ${res.status}`);
@@ -90,12 +91,19 @@ export default function RecordEditDetailPage({
   }
 
   useEffect(() => {
-    load();
+    if (!journalId) {
+      setErr("Invalid journalId");
+      return;
+    }
+    load(journalId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [journalId]);
 
   async function saveEdit() {
-    if (!draft) return;
+    if (!draft || !journalId) {
+      setErr("Invalid journalId");
+      return;
+    }
     setSaving(true);
     setErr(null);
     setStatus(null);
@@ -131,6 +139,10 @@ export default function RecordEditDetailPage({
   }
 
   async function deleteRow() {
+    if (!journalId) {
+      setErr("Invalid journalId");
+      return;
+    }
     const ok = confirm(`journal_id=${journalId} を削除しますか？（元に戻せません）`);
     if (!ok) return;
 
@@ -160,7 +172,7 @@ export default function RecordEditDetailPage({
       </div>
 
       <h2 className="page-title">Record Edit</h2>
-      <p className="page-subtitle">仕訳ID: {journalId}</p>
+      <p className="page-subtitle">仕訳ID: {journalId ?? "-"}</p>
 
       {err ? <p style={{ color: "crimson" }}>Error: {err}</p> : null}
       {status ? (
@@ -252,7 +264,11 @@ export default function RecordEditDetailPage({
               <button className="btn" disabled={saving} onClick={saveEdit}>
                 保存
               </button>
-              <button className="btn btn-secondary" disabled={saving} onClick={load}>
+              <button
+                className="btn btn-secondary"
+                disabled={saving || !journalId}
+                onClick={() => journalId && load(journalId)}
+              >
                 再読み込み
               </button>
               <button className="btn btn-secondary" disabled={deleting} onClick={deleteRow}>

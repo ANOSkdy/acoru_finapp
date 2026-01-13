@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navItems = [
-  { href: "/recordedit", label: "Record Edit", sub: "台帳編集" },
+  { href: "/recordlists", label: "Record List", sub: "台帳一覧" },
   { href: "/upload", label: "Upload", sub: "領収書" },
 ];
 

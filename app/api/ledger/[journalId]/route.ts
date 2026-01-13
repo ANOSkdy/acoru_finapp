@@ -37,6 +37,33 @@ function jsonError(message: string, status = 400, details?: unknown) {
 // Next.js 16: params is a Promise
 type RouteContext = { params: Promise<{ journalId: string }> };
 
+export async function GET(_req: Request, { params }: RouteContext) {
+  try {
+    const { journalId } = await params;
+    if (!/^\d+$/.test(journalId)) return jsonError("Invalid journalId", 400);
+
+    const r = await pool.query(
+      `
+        SELECT
+          journal_id, transaction_date,
+          debit_account, debit_vendor, debit_amount, debit_tax,
+          credit_account, credit_amount,
+          description, memo
+        FROM expense_ledger
+        WHERE journal_id::text = $1;
+      `,
+      [journalId]
+    );
+    if (r.rowCount === 0) return jsonError("Not found", 404);
+
+    return NextResponse.json({ ok: true, row: r.rows[0] });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("GET /api/ledger/[journalId] error", message);
+    return jsonError(message, 500);
+  }
+}
+
 export async function PATCH(req: Request, { params }: RouteContext) {
   try {
     const { journalId } = await params;

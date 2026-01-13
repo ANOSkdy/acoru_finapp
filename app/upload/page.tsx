@@ -119,8 +119,8 @@ export default function UploadPage() {
               <button className="btn-secondary btn" type="button" onClick={resetUpload}>
                 Upload more
               </button>
-              <Link className="btn btn-ghost" href="/recordedit">
-                Go to Record Edit
+              <Link className="btn btn-ghost" href="/recordlists">
+                Go to Record List
               </Link>
             </div>
           ) : null}

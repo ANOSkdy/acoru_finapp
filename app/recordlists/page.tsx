@@ -7,6 +7,7 @@ type LedgerRow = {
   journal_id: string;
   transaction_date: string;
   debit_account: string;
+  debit_vendor: string | null;
   debit_amount: string;
 };
 
@@ -138,8 +139,9 @@ export default function RecordListsPage() {
             <div>
               <div className="record-meta">仕訳ID: {r.journal_id}</div>
               <div className="record-list-main">
-                <span>{toDateInputValue(r.transaction_date)}</span>
-                <span>{r.debit_account}</span>
+                <span className="record-list-text">{toDateInputValue(r.transaction_date)}</span>
+                <span className="record-list-text">{r.debit_account}</span>
+                <span className="record-list-text">{r.debit_vendor ?? "-"}</span>
               </div>
             </div>
             <div className="record-list-amount">{r.debit_amount}</div>

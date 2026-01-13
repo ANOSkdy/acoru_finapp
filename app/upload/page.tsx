@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import Link from "next/link";
 
@@ -9,6 +9,8 @@ type Result = { receiptId: string; fileName: string; ok: boolean; message?: stri
 export default function UploadPage() {
   const [results, setResults] = useState<Result[]>([]);
   const [busy, setBusy] = useState(false);
+  const [selectedNames, setSelectedNames] = useState<string[]>([]);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -60,39 +62,89 @@ export default function UploadPage() {
     setBusy(false);
   }
 
+  function resetUpload() {
+    setResults([]);
+    setSelectedNames([]);
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+  }
+
   return (
-    <main style={{ padding: 24 }}>
-      <h1>領収書アップロード</h1>
+    <main>
+      <h2 className="page-title">領収書アップロード</h2>
+      <p className="page-subtitle">
+        スマホから撮ったレシートをまとめてアップロードできます。JPG/PDF を選択してください。
+      </p>
 
-      <div style={{ marginBottom: 16 }}>
-        <Link href="/recordedit">
-          <button style={{ padding: "8px 12px", backgroundColor: "royalblue", color: "#fff" }}>
-            レコード編集へ
+      <form onSubmit={onSubmit} className="upload-card">
+        <label className="upload-drop">
+          <input
+            ref={inputRef}
+            className="upload-input"
+            name="files"
+            type="file"
+            accept=".jpg,.jpeg,.pdf"
+            multiple
+            onChange={(e) => {
+              const files = e.target.files ? Array.from(e.target.files) : [];
+              setSelectedNames(files.map((file) => file.name));
+            }}
+          />
+          <strong>ファイルを選択</strong>
+          <div className="record-meta">タップして領収書を追加（複数選択可）</div>
+          {selectedNames.length > 0 ? (
+            <div className="record-meta">{selectedNames.length} 件選択済み</div>
+          ) : null}
+        </label>
+
+        {selectedNames.length > 0 ? (
+          <ul className="upload-results">
+            {selectedNames.map((name) => (
+              <li key={name} className="upload-result">
+                <span>{name}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="record-meta">まだファイルが選択されていません。</div>
+        )}
+
+        <div className="upload-actions">
+          <button className="btn" type="submit" disabled={busy || selectedNames.length === 0}>
+            {busy ? "Uploading..." : "アップロードを開始"}
           </button>
-        </Link>
-      </div>
-
-      <form onSubmit={onSubmit}>
-        <input name="files" type="file" accept=".jpg,.jpeg,.pdf" multiple />
-        <button
-          type="submit"
-          disabled={busy}
-          style={{ marginLeft: 8, backgroundColor: "royalblue", color: "#fff" }}
-        >
-          {busy ? "Uploading..." : "Upload"}
-        </button>
+          {results.length > 0 && !busy ? (
+            <div className="record-actions">
+              <button className="btn-secondary btn" type="button" onClick={resetUpload}>
+                Upload more
+              </button>
+              <Link className="btn btn-ghost" href="/recordedit">
+                Go to Record Edit
+              </Link>
+            </div>
+          ) : null}
+        </div>
       </form>
 
-      <hr style={{ margin: "16px 0" }} />
-
-      <ul>
-        {results.map((r) => (
-          <li key={r.receiptId}>
-            {r.ok ? "✅" : "❌"} {r.fileName} / {r.receiptId}
-            {!r.ok && r.message ? ` / ${r.message}` : ""}
-          </li>
-        ))}
-      </ul>
+      <section style={{ marginTop: 20 }}>
+        <h3>アップロード結果</h3>
+        {busy ? <p className="record-meta">Uploading...</p> : null}
+        <ul className="upload-results">
+          {results.map((r) => (
+            <li key={r.receiptId} className="upload-result">
+              <span className={r.ok ? "status-success" : "status-fail"}>
+                {r.ok ? "✅ 成功" : "❌ 失敗"} - {r.fileName}
+              </span>
+              <span className="record-meta">receipt_id: {r.receiptId}</span>
+              {!r.ok && r.message ? <span className="record-meta">{r.message}</span> : null}
+            </li>
+          ))}
+          {results.length === 0 && !busy ? (
+            <li className="upload-result">まだ結果はありません。</li>
+          ) : null}
+        </ul>
+      </section>
     </main>
   );
 }

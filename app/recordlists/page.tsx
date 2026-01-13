@@ -7,9 +7,7 @@ type LedgerRow = {
   journal_id: string;
   transaction_date: string;
   debit_account: string;
-  debit_vendor: string | null;
   debit_amount: string;
-  description: string | null;
 };
 
 type ListResponse = {
@@ -134,79 +132,20 @@ export default function RecordListsPage() {
       {err ? <p style={{ color: "crimson" }}>Error: {err}</p> : null}
       {loading ? <p className="record-meta">Loading...</p> : null}
 
-      <div className="record-cards">
+      <div className="record-list">
         {rows.map((r) => (
-          <article key={r.journal_id} className="record-card">
-            <div className="record-meta">仕訳ID: {r.journal_id}</div>
-            <div className="record-field">
-              <span className="record-label">取引日</span>
-              <strong>{toDateInputValue(r.transaction_date)}</strong>
+          <Link key={r.journal_id} href={`/recordedit/${r.journal_id}`} className="record-list-item">
+            <div>
+              <div className="record-meta">仕訳ID: {r.journal_id}</div>
+              <div className="record-list-main">
+                <span>{toDateInputValue(r.transaction_date)}</span>
+                <span>{r.debit_account}</span>
+              </div>
             </div>
-            <div className="record-field">
-              <span className="record-label">借方科目</span>
-              <span>{r.debit_account}</span>
-            </div>
-            <div className="record-field">
-              <span className="record-label">取引先</span>
-              <span>{r.debit_vendor ?? "-"}</span>
-            </div>
-            <div className="record-field">
-              <span className="record-label">金額</span>
-              <strong>{r.debit_amount}</strong>
-            </div>
-            <div className="record-field">
-              <span className="record-label">摘要</span>
-              <span>{r.description ?? "-"}</span>
-            </div>
-            <div className="record-actions">
-              <Link className="btn" href={`/recordedit/${r.journal_id}`}>
-                レコードを編集
-              </Link>
-            </div>
-          </article>
+            <div className="record-list-amount">{r.debit_amount}</div>
+          </Link>
         ))}
         {rows.length === 0 ? <div className="record-card">レコードがありません</div> : null}
-      </div>
-
-      <div className="record-table">
-        <table cellPadding={8} style={{ borderCollapse: "collapse", minWidth: 1000 }}>
-          <thead>
-            <tr style={{ background: "#f3f3f3" }}>
-              <th>仕訳ID</th>
-              <th>取引日</th>
-              <th>借方科目</th>
-              <th>取引先</th>
-              <th>金額</th>
-              <th>摘要</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.journal_id} style={{ borderTop: "1px solid #ddd" }}>
-                <td>{r.journal_id}</td>
-                <td>{toDateInputValue(r.transaction_date)}</td>
-                <td>{r.debit_account}</td>
-                <td>{r.debit_vendor ?? ""}</td>
-                <td style={{ textAlign: "right" }}>{r.debit_amount}</td>
-                <td>{r.description ?? ""}</td>
-                <td style={{ whiteSpace: "nowrap" }}>
-                  <Link className="btn btn-secondary" href={`/recordedit/${r.journal_id}`}>
-                    編集
-                  </Link>
-                </td>
-              </tr>
-            ))}
-
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={7} style={{ padding: 16, color: "#666" }}>
-                  レコードがありません
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
       </div>
     </main>
   );

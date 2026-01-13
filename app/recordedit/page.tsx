@@ -170,70 +170,191 @@ export default function RecordEditPage() {
   }
 
   return (
-    <main style={{ padding: 24, display: "grid", gap: 12 }}>
-      <h1>Record Edit (expense_ledger)</h1>
+    <main>
+      <h2 className="page-title">Record Edit</h2>
+      <p className="page-subtitle">スマホでも見やすい台帳ビューです。編集・削除はそのまま使えます。</p>
 
-      <div>
-        <Link href="/upload">
-          <button style={{ padding: "8px 12px", backgroundColor: "royalblue", color: "#fff" }}>
-            アップロードページへ
+      <div className="record-toolbar">
+        <div className="record-actions">
+          <Link className="btn btn-secondary" href="/upload">
+            アップロードへ
+          </Link>
+        </div>
+
+        <section className="record-controls">
+          <input
+            className="record-input"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setOffset(0);
+            }}
+            placeholder="検索（仕訳ID/店名/科目/摘要/メモ/receipt_idなど）"
+          />
+
+          <select
+            className="record-select"
+            value={limit}
+            onChange={(e) => {
+              setLimit(Number(e.target.value));
+              setOffset(0);
+            }}
+          >
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+
+          <button className="btn btn-secondary" disabled={loading} onClick={() => load()}>
+            再読み込み
           </button>
-        </Link>
+
+          <div className="record-actions">
+            <button
+              className="btn btn-secondary"
+              disabled={loading || !canPrev}
+              onClick={() => setOffset(Math.max(0, offset - limit))}
+            >
+              前へ
+            </button>
+            <span className="record-meta">
+              {total === 0 ? "0" : `${offset + 1}-${Math.min(offset + limit, total)}`} / {total}
+            </span>
+            <button
+              className="btn btn-secondary"
+              disabled={loading || !canNext}
+              onClick={() => setOffset(offset + limit)}
+            >
+              次へ
+            </button>
+          </div>
+        </section>
       </div>
 
-      <section style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <input
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setOffset(0);
-          }}
-          placeholder="検索（仕訳ID/店名/科目/摘要/メモ/receipt_idなど）"
-          style={{ minWidth: 320, padding: 8 }}
-        />
-
-        <select
-          value={limit}
-          onChange={(e) => {
-            setLimit(Number(e.target.value));
-            setOffset(0);
-          }}
-          style={{ padding: 8 }}
-        >
-          <option value={20}>20</option>
-          <option value={50}>50</option>
-          <option value={100}>100</option>
-        </select>
-
-        <button disabled={loading} onClick={() => load()} style={{ padding: "8px 12px" }}>
-          再読み込み
-        </button>
-
-        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-          <button
-            disabled={loading || !canPrev}
-            onClick={() => setOffset(Math.max(0, offset - limit))}
-            style={{ padding: "8px 12px" }}
-          >
-            前へ
-          </button>
-          <span>
-            {total === 0 ? "0" : `${offset + 1}-${Math.min(offset + limit, total)}`} / {total}
-          </span>
-          <button
-            disabled={loading || !canNext}
-            onClick={() => setOffset(offset + limit)}
-            style={{ padding: "8px 12px" }}
-          >
-            次へ
-          </button>
-        </div>
-      </section>
-
       {err ? <p style={{ color: "crimson" }}>Error: {err}</p> : null}
-      {loading ? <p>Loading...</p> : null}
+      {loading ? <p className="record-meta">Loading...</p> : null}
 
-      <div style={{ overflowX: "auto" }}>
+      <div className="record-cards">
+        {rows.map((r) => {
+          const isEditing = editingId === r.journal_id;
+          return (
+            <article key={r.journal_id} className="record-card">
+              <div className="record-meta">仕訳ID: {r.journal_id}</div>
+              <div className="record-field">
+                <span className="record-label">取引日</span>
+                {isEditing ? (
+                  <input
+                    className="record-input"
+                    value={draft?.transaction_date ?? ""}
+                    onChange={(e) =>
+                      setDraft((d) => (d ? { ...d, transaction_date: e.target.value } : d))
+                    }
+                  />
+                ) : (
+                  <strong>{toDateInputValue(r.transaction_date)}</strong>
+                )}
+              </div>
+              <div className="record-field">
+                <span className="record-label">借方科目</span>
+                {isEditing ? (
+                  <input
+                    className="record-input"
+                    value={draft?.debit_account ?? ""}
+                    onChange={(e) =>
+                      setDraft((d) => (d ? { ...d, debit_account: e.target.value } : d))
+                    }
+                  />
+                ) : (
+                  <span>{r.debit_account}</span>
+                )}
+              </div>
+              <div className="record-field">
+                <span className="record-label">取引先</span>
+                {isEditing ? (
+                  <input
+                    className="record-input"
+                    value={draft?.debit_vendor ?? ""}
+                    onChange={(e) =>
+                      setDraft((d) => (d ? { ...d, debit_vendor: e.target.value } : d))
+                    }
+                  />
+                ) : (
+                  <span>{r.debit_vendor ?? "-"}</span>
+                )}
+              </div>
+              <div className="record-field">
+                <span className="record-label">金額</span>
+                {isEditing ? (
+                  <input
+                    className="record-input"
+                    value={draft?.debit_amount ?? "0"}
+                    onChange={(e) =>
+                      setDraft((d) => (d ? { ...d, debit_amount: e.target.value } : d))
+                    }
+                    inputMode="numeric"
+                  />
+                ) : (
+                  <strong>{r.debit_amount}</strong>
+                )}
+              </div>
+              <div className="record-field">
+                <span className="record-label">摘要</span>
+                {isEditing ? (
+                  <input
+                    className="record-input"
+                    value={draft?.description ?? ""}
+                    onChange={(e) =>
+                      setDraft((d) => (d ? { ...d, description: e.target.value } : d))
+                    }
+                  />
+                ) : (
+                  <span>{r.description ?? "-"}</span>
+                )}
+              </div>
+              <div className="record-field">
+                <span className="record-label">メモ</span>
+                {isEditing ? (
+                  <input
+                    className="record-input"
+                    value={draft?.memo ?? ""}
+                    onChange={(e) => setDraft((d) => (d ? { ...d, memo: e.target.value } : d))}
+                  />
+                ) : (
+                  <span>{r.memo ?? "-"}</span>
+                )}
+              </div>
+              <div className="record-field">
+                <span className="record-label">receipt_id</span>
+                <span className="record-meta">{r.drive_file_id ?? "-"}</span>
+              </div>
+              <div className="record-actions">
+                {isEditing ? (
+                  <>
+                    <button className="btn" disabled={loading} onClick={() => saveEdit(r.journal_id)}>
+                      保存
+                    </button>
+                    <button className="btn btn-secondary" disabled={loading} onClick={cancelEdit}>
+                      キャンセル
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button className="btn btn-secondary" disabled={loading} onClick={() => startEdit(r)}>
+                      編集
+                    </button>
+                    <button className="btn btn-secondary" disabled={loading} onClick={() => deleteRow(r.journal_id)}>
+                      削除
+                    </button>
+                  </>
+                )}
+              </div>
+            </article>
+          );
+        })}
+        {rows.length === 0 ? <div className="record-card">レコードがありません</div> : null}
+      </div>
+
+      <div className="record-table">
         <table cellPadding={8} style={{ borderCollapse: "collapse", minWidth: 1200 }}>
           <thead>
             <tr style={{ background: "#f3f3f3" }}>

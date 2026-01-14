@@ -6,10 +6,14 @@ import Link from "next/link";
 
 type Result = { receiptId: string; fileName: string; ok: boolean; message?: string };
 
+const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "application/pdf"] as const;
+const ACCEPTED_EXTENSIONS = ".jpg,.jpeg,.png,.pdf";
+
 export default function UploadPage() {
   const [results, setResults] = useState<Result[]>([]);
   const [busy, setBusy] = useState(false);
   const [selectedNames, setSelectedNames] = useState<string[]>([]);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -19,6 +23,19 @@ export default function UploadPage() {
     const files = input.files ? Array.from(input.files) : [];
     if (files.length === 0) return;
 
+    const invalidFiles = files.filter(
+      (file) => !ALLOWED_MIME_TYPES.includes(file.type as (typeof ALLOWED_MIME_TYPES)[number])
+    );
+    if (invalidFiles.length > 0) {
+      setValidationError(
+        `未対応のファイル形式です。PNG/JPEG/PDFのみアップロードできます: ${invalidFiles
+          .map((file) => file.name)
+          .join(", ")}`
+      );
+    } else {
+      setValidationError(null);
+    }
+
     setBusy(true);
     const next: Result[] = [];
 
@@ -26,6 +43,16 @@ export default function UploadPage() {
       const receiptId = crypto.randomUUID();
 
       try {
+        if (!ALLOWED_MIME_TYPES.includes(file.type as (typeof ALLOWED_MIME_TYPES)[number])) {
+          next.push({
+            receiptId,
+            fileName: file.name,
+            ok: false,
+            message: "未対応のファイル形式です。PNG/JPEG/PDFのみアップロードできます。",
+          });
+          continue;
+        }
+
         const blob = await upload(file.name, file, {
           handleUploadUrl: "/api/blob/upload",
           clientPayload: JSON.stringify({ receiptId }),
@@ -65,6 +92,7 @@ export default function UploadPage() {
   function resetUpload() {
     setResults([]);
     setSelectedNames([]);
+    setValidationError(null);
     if (inputRef.current) {
       inputRef.current.value = "";
     }
@@ -74,7 +102,7 @@ export default function UploadPage() {
     <main>
       <h2 className="page-title">領収書アップロード</h2>
       <p className="page-subtitle">
-        スマホから撮ったレシートをまとめてアップロードできます。JPG/PDF を選択してください。
+        スマホから撮ったレシートをまとめてアップロードできます。JPG/PNG/PDF を選択してください。
       </p>
 
       <form onSubmit={onSubmit} className="upload-card">
@@ -84,10 +112,25 @@ export default function UploadPage() {
             className="upload-input"
             name="files"
             type="file"
-            accept=".jpg,.jpeg,.pdf"
+            accept={ACCEPTED_EXTENSIONS}
             multiple
             onChange={(e) => {
               const files = e.target.files ? Array.from(e.target.files) : [];
+              const invalidFiles = files.filter(
+                (file) =>
+                  !ALLOWED_MIME_TYPES.includes(
+                    file.type as (typeof ALLOWED_MIME_TYPES)[number]
+                  )
+              );
+              if (invalidFiles.length > 0) {
+                setValidationError(
+                  `未対応のファイル形式です。PNG/JPEG/PDFのみアップロードできます: ${invalidFiles
+                    .map((file) => file.name)
+                    .join(", ")}`
+                );
+              } else {
+                setValidationError(null);
+              }
               setSelectedNames(files.map((file) => file.name));
             }}
           />
@@ -109,9 +152,14 @@ export default function UploadPage() {
         ) : (
           <div className="record-meta">まだファイルが選択されていません。</div>
         )}
+        {validationError ? <div className="status-fail">{validationError}</div> : null}
 
         <div className="upload-actions">
-          <button className="btn" type="submit" disabled={busy || selectedNames.length === 0}>
+          <button
+            className="btn"
+            type="submit"
+            disabled={busy || selectedNames.length === 0 || Boolean(validationError)}
+          >
             {busy ? "Uploading..." : "アップロードを開始"}
           </button>
           {results.length > 0 && !busy ? (

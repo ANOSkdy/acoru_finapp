@@ -20,7 +20,7 @@ export async function POST(request: Request) {
         const parsed = PayloadSchema.parse(JSON.parse(clientPayload ?? "{}"));
 
         return {
-          allowedContentTypes: ["image/jpeg", "application/pdf"],
+          allowedContentTypes: ["image/jpeg", "image/png", "application/pdf"],
           maximumSizeInBytes: env.MAX_FILE_BYTES,
           tokenPayload: JSON.stringify({ receiptId: parsed.receiptId }),
           access: "public",

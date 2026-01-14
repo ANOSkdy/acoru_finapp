@@ -11,7 +11,7 @@ const BodySchema = z.object({
   blobUrl: z.string().url(),
   pathname: z.string().min(1),
   fileName: z.string().min(1),
-  mimeType: z.enum(["image/jpeg", "application/pdf"]),
+  mimeType: z.enum(["image/jpeg", "image/png", "application/pdf"]),
   sizeBytes: z.number().int().nonnegative(),
 });
 

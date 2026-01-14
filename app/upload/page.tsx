@@ -6,6 +6,43 @@ import Link from "next/link";
 
 type Result = { receiptId: string; fileName: string; ok: boolean; message?: string };
 
+const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "pdf"] as const;
+const ALLOWED_MIME_TYPES = ["image/jpeg", "image/jpg", "application/pdf"] as const;
+
+type AllowedExtension = (typeof ALLOWED_EXTENSIONS)[number];
+type AllowedMime = (typeof ALLOWED_MIME_TYPES)[number];
+
+const FRIENDLY_UNSUPPORTED_MESSAGE = (
+  extLabel: string,
+  mimeLabel: string
+) =>
+  `検出された形式: ${extLabel} / ${mimeLabel}。JPG/JPEG/PDF のみアップロードできます。` +
+  "スクリーンショットは PNG の場合が多いので、JPG または PDF に変換して再度お試しください。";
+
+function getExtension(fileName: string) {
+  const match = /\.([^.]+)$/.exec(fileName.toLowerCase());
+  return match?.[1] ?? "";
+}
+
+function isAllowedUpload(file: File) {
+  const ext = getExtension(file.name);
+  const hasMime = file.type.length > 0;
+  const mimeAllowed = !hasMime || (ALLOWED_MIME_TYPES as readonly string[]).includes(file.type);
+  const extAllowed = ext.length === 0 || (ALLOWED_EXTENSIONS as readonly string[]).includes(ext);
+  return { ext, mimeAllowed, extAllowed };
+}
+
+function mapUploadErrorMessage(error: unknown, extLabel: string, mimeLabel: string) {
+  if (error instanceof Error) {
+    if (error.message.includes("Content type mismatch")) {
+      console.error("Blob upload rejected by content type.", error);
+      return FRIENDLY_UNSUPPORTED_MESSAGE(extLabel, mimeLabel);
+    }
+    return error.message;
+  }
+  return String(error);
+}
+
 export default function UploadPage() {
   const [results, setResults] = useState<Result[]>([]);
   const [busy, setBusy] = useState(false);
@@ -24,6 +61,19 @@ export default function UploadPage() {
 
     for (const file of files) {
       const receiptId = crypto.randomUUID();
+      const { ext, mimeAllowed, extAllowed } = isAllowedUpload(file);
+      const extLabel = ext ? `.${ext}` : "不明";
+      const mimeLabel = file.type || "不明";
+
+      if (!mimeAllowed || !extAllowed) {
+        next.push({
+          receiptId,
+          fileName: file.name,
+          ok: false,
+          message: FRIENDLY_UNSUPPORTED_MESSAGE(extLabel, mimeLabel),
+        });
+        continue;
+      }
 
       try {
         const blob = await upload(file.name, file, {
@@ -53,7 +103,7 @@ export default function UploadPage() {
 
         next.push({ receiptId, fileName: file.name, ok: true });
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = mapUploadErrorMessage(err, extLabel, mimeLabel);
         next.push({ receiptId, fileName: file.name, ok: false, message });
       }
     }
@@ -93,6 +143,7 @@ export default function UploadPage() {
           />
           <strong>ファイルを選択</strong>
           <div className="record-meta">タップして領収書を追加（複数選択可）</div>
+          <div className="record-meta">対応形式: JPG/JPEG/PDF</div>
           {selectedNames.length > 0 ? (
             <div className="record-meta">{selectedNames.length} 件選択済み</div>
           ) : null}

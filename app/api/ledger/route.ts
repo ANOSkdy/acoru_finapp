@@ -11,6 +11,33 @@ const QuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
+const CreateSchema = z
+  .object({
+    transaction_date: z.string().min(1),
+    debit_account: z.string().min(1),
+    debit_vendor: z.string().default(""),
+    debit_amount: z.coerce.number().int().nonnegative(),
+    debit_tax: z.coerce.number().int().nonnegative().default(0),
+    debit_invoice_category: z.string().default("区分記載"),
+    credit_account: z.string().min(1),
+    credit_vendor: z.string().default(""),
+    credit_amount: z.coerce.number().int().nonnegative(),
+    credit_tax: z.coerce.number().int().nonnegative().default(0),
+    credit_invoice_category: z.string().default("区分記載"),
+    description: z.string().default(""),
+    memo: z.string().default(""),
+  })
+  .strict();
+
+function normalizeDate(value: string) {
+  const v = value.trim();
+  return v.includes("T") ? v.slice(0, 10) : v;
+}
+
+function jsonError(message: string, status = 400, details?: unknown) {
+  return NextResponse.json({ ok: false, error: { message, details } }, { status });
+}
+
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -85,5 +112,53 @@ export async function GET(req: Request) {
       { ok: false, error: { message } },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = CreateSchema.parse(await req.json());
+
+    const r = await pool.query(
+      `INSERT INTO expense_ledger (
+        transaction_date,
+        debit_account, debit_vendor, debit_amount, debit_tax, debit_invoice_category,
+        credit_account, credit_vendor, credit_amount, credit_tax, credit_invoice_category,
+        description, memo,
+        processed_at
+      )
+      VALUES (
+        $1,
+        $2, $3, $4, $5, $6,
+        $7, $8, $9, $10, $11,
+        $12, $13,
+        now()
+      )
+      RETURNING journal_id;`,
+      [
+        normalizeDate(body.transaction_date),
+        body.debit_account,
+        body.debit_vendor,
+        body.debit_amount,
+        body.debit_tax,
+        body.debit_invoice_category,
+        body.credit_account,
+        body.credit_vendor,
+        body.credit_amount,
+        body.credit_tax,
+        body.credit_invoice_category,
+        body.description,
+        body.memo,
+      ]
+    );
+
+    return NextResponse.json({ ok: true, journal_id: r.rows[0]?.journal_id }, { status: 201 });
+  } catch (e: unknown) {
+    if (e && typeof e === "object" && "name" in e && (e as { name?: string }).name === "ZodError") {
+      return jsonError("Validation error", 400, e);
+    }
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("POST /api/ledger error", message);
+    return jsonError(message, 500);
   }
 }

@@ -331,6 +331,29 @@ button {
   overflow-x: auto;
 }
 
+.record-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(15, 23, 42, 0.45);
+  padding: 20px;
+  display: grid;
+  place-items: center;
+}
+
+.record-modal {
+  width: min(680px, 100%);
+  max-height: 90dvh;
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.28);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
 @media (max-width: 899px) {
   .record-table {
     display: none;
@@ -343,5 +366,9 @@ button {
 
   .app-main {
     padding: 16px 16px 96px;
+  }
+
+  .record-modal-overlay {
+    padding: 12px;
   }
 }

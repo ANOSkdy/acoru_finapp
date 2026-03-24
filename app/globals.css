@@ -367,13 +367,52 @@ button {
   font-weight: 600;
 }
 
-.record-grid-row {
-  cursor: pointer;
-}
-
 .record-grid-row:hover td,
 .record-grid-row:focus-visible td {
   background: #f8fafc;
+}
+
+.record-sort-btn {
+  width: 100%;
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #334155;
+}
+
+.record-sort-btn.active {
+  color: #1d4ed8;
+}
+
+.record-sort-mark {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.record-inline-edit {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.record-inline-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.record-inline-actions .btn {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.record-cell-value {
+  display: inline-block;
+  min-height: 20px;
 }
 
 .record-modal-overlay {

@@ -5,10 +5,40 @@ import { pool } from "@/lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const SORTABLE_COLUMN_MAP = {
+  journal_id: "journal_id",
+  transaction_date: "transaction_date",
+  debit_account: "debit_account",
+  debit_vendor: "debit_vendor",
+  debit_tax: "debit_tax",
+  debit_amount: "debit_amount",
+  credit_account: "credit_account",
+  credit_amount: "credit_amount",
+  description: "description",
+  memo: "memo",
+  created_at: "created_at",
+} as const;
+
 const QuerySchema = z.object({
   q: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(50),
+  limit: z.coerce.number().int().min(1).max(200).default(100),
   offset: z.coerce.number().int().min(0).default(0),
+  sortBy: z
+    .enum([
+      "journal_id",
+      "transaction_date",
+      "debit_account",
+      "debit_vendor",
+      "debit_tax",
+      "debit_amount",
+      "credit_account",
+      "credit_amount",
+      "description",
+      "memo",
+      "created_at",
+    ])
+    .default("transaction_date"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
 
 const CreateSchema = z
@@ -63,6 +93,10 @@ export async function GET(req: Request) {
 
     const countSql = `SELECT COUNT(*)::int AS total FROM expense_ledger ${where};`;
 
+    const sortColumn = SORTABLE_COLUMN_MAP[parsed.sortBy];
+    const sortOrder = parsed.sortOrder.toUpperCase();
+    const orderByClause = `ORDER BY ${sortColumn} ${sortOrder}, created_at DESC`;
+
     const listSqlNoQ = `
       SELECT
         journal_id, transaction_date,
@@ -72,7 +106,7 @@ export async function GET(req: Request) {
         drive_file_id, drive_file_name, drive_mime_type,
         created_at, processed_at
       FROM expense_ledger
-      ORDER BY created_at DESC
+      ${orderByClause}
       LIMIT $1 OFFSET $2;
     `;
 
@@ -86,7 +120,7 @@ export async function GET(req: Request) {
         created_at, processed_at
       FROM expense_ledger
       ${where}
-      ORDER BY created_at DESC
+      ${orderByClause}
       LIMIT $2 OFFSET $3;
     `;
 
@@ -108,10 +142,7 @@ export async function GET(req: Request) {
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
     console.error("GET /api/ledger error", message);
-    return NextResponse.json(
-      { ok: false, error: { message } },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: { message } }, { status: 500 });
   }
 }
 

@@ -2,13 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type LedgerRow = {
   journal_id: string;
   transaction_date: string;
   debit_account: string;
   debit_vendor: string | null;
-  debit_amount: string;
+  debit_tax: string | number | null;
+  debit_amount: string | number | null;
+  credit_account: string | null;
+  credit_amount: string | number | null;
+  description: string | null;
+  memo: string | null;
 };
 
 type ListResponse = {
@@ -44,6 +50,7 @@ function toDateInputValue(v: string) {
 }
 
 export default function RecordListsPage() {
+  const router = useRouter();
   const [q, setQ] = useState("");
   const [limit, setLimit] = useState(50);
   const [offset, setOffset] = useState(0);
@@ -229,22 +236,54 @@ export default function RecordListsPage() {
       {err ? <p style={{ color: "crimson" }}>Error: {err}</p> : null}
       {loading ? <p className="record-meta">Loading...</p> : null}
 
-      <div className="record-list">
-        {rows.map((r) => (
-          <Link key={r.journal_id} href={`/recordedit/${r.journal_id}`} className="record-list-item">
-            <div>
-              <div className="record-meta">仕訳ID: {r.journal_id}</div>
-              <div className="record-list-main">
-                <span className="record-list-text">{toDateInputValue(r.transaction_date)}</span>
-                <span className="record-list-text">{r.debit_account}</span>
-                <span className="record-list-text">{r.debit_vendor ?? "-"}</span>
-              </div>
-            </div>
-            <div className="record-list-amount">{r.debit_amount}</div>
-          </Link>
-        ))}
-        {rows.length === 0 ? <div className="record-card">レコードがありません</div> : null}
+      <div className="record-table-wrap">
+        <table className="record-grid" aria-label="仕訳一覧">
+          <thead>
+            <tr>
+              <th>仕訳ID</th>
+              <th>取引日</th>
+              <th>借方科目</th>
+              <th>取引先</th>
+              <th>借方税額</th>
+              <th>借方金額</th>
+              <th>貸方科目</th>
+              <th>貸方金額</th>
+              <th>摘要</th>
+              <th>メモ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr
+                key={r.journal_id}
+                tabIndex={0}
+                role="link"
+                className="record-grid-row"
+                onClick={() => router.push(`/recordedit/${r.journal_id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.push(`/recordedit/${r.journal_id}`);
+                  }
+                }}
+                aria-label={`仕訳ID ${r.journal_id} の詳細へ`}
+              >
+                <td>{r.journal_id}</td>
+                <td>{toDateInputValue(r.transaction_date)}</td>
+                <td>{r.debit_account}</td>
+                <td>{r.debit_vendor ?? "-"}</td>
+                <td>{r.debit_tax ?? 0}</td>
+                <td>{r.debit_amount ?? 0}</td>
+                <td>{r.credit_account ?? "-"}</td>
+                <td>{r.credit_amount ?? 0}</td>
+                <td>{r.description || "-"}</td>
+                <td>{r.memo || "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
+      {rows.length === 0 ? <div className="record-card">レコードがありません</div> : null}
 
       {showCreateModal ? (
         <div className="record-modal-overlay" role="dialog" aria-modal="true" aria-label="仕訳新規登録">

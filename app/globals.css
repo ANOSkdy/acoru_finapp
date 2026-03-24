@@ -331,6 +331,51 @@ button {
   overflow-x: auto;
 }
 
+.record-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.record-grid {
+  width: 100%;
+  min-width: 1080px;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.record-grid th,
+.record-grid td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #f1f5f9;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.record-grid th:last-child,
+.record-grid td:last-child {
+  border-right: none;
+}
+
+.record-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  font-weight: 600;
+}
+
+.record-grid-row {
+  cursor: pointer;
+}
+
+.record-grid-row:hover td,
+.record-grid-row:focus-visible td {
+  background: #f8fafc;
+}
+
 .record-modal-overlay {
   position: fixed;
   inset: 0;
@@ -355,10 +400,6 @@ button {
 }
 
 @media (max-width: 899px) {
-  .record-table {
-    display: none;
-  }
-
   .app-container {
     border-radius: 0;
     box-shadow: none;

@@ -344,7 +344,7 @@ export default function RecordListsPage() {
       <p className="page-subtitle">仕訳を一覧で確認し、セルをダブルクリックして編集します。</p>
 
       <div className="record-toolbar">
-        <div className="record-actions">
+        <section className="record-controls record-controls-desktop">
           <button
             className="btn"
             onClick={() => {
@@ -357,9 +357,6 @@ export default function RecordListsPage() {
           <button className="btn btn-secondary" onClick={() => void deleteSelectedRows()} disabled={deleting || selectedCount === 0}>
             削除
           </button>
-        </div>
-
-        <section className="record-controls">
           <input
             className="record-input"
             value={q}
@@ -372,7 +369,7 @@ export default function RecordListsPage() {
 
           <span className="record-meta">100件/ページ固定</span>
 
-          <div className="record-actions">
+          <div className="record-actions record-actions-pager">
             <button
               className="btn btn-secondary"
               disabled={loading || !canPrev}

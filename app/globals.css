@@ -43,13 +43,12 @@ button {
   background: #f8f8fb;
   display: flex;
   justify-content: center;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
-    env(safe-area-inset-left);
+  padding: 0 20px env(safe-area-inset-bottom);
 }
 
 .app-container {
   width: 100%;
-  max-width: 960px;
+  max-width: 1440px;
   display: flex;
   flex-direction: column;
   background: var(--background);
@@ -92,7 +91,7 @@ button {
 
 .bottom-nav-inner {
   width: 100%;
-  max-width: 960px;
+  max-width: 1440px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -161,7 +160,7 @@ button {
 .upload-card {
   border: 1px solid #e5e7eb;
   border-radius: 16px;
-  padding: 16px;
+  padding: 20px;
   background: #ffffff;
   display: grid;
   gap: 16px;
@@ -236,6 +235,11 @@ button {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+.record-controls-desktop .record-input {
+  flex: 1 1 280px;
+  min-width: 240px;
 }
 
 .record-input,
@@ -449,9 +453,14 @@ button {
 }
 
 @media (max-width: 899px) {
+  .app-shell {
+    padding: 0;
+  }
+
   .app-container {
     border-radius: 0;
     box-shadow: none;
+    max-width: 100%;
   }
 
   .app-main {
@@ -460,5 +469,33 @@ button {
 
   .record-modal-overlay {
     padding: 12px;
+  }
+}
+
+@media (min-width: 900px) {
+  .record-toolbar {
+    margin-bottom: 12px;
+  }
+
+  .record-controls-desktop {
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+
+  .record-actions-pager {
+    flex-wrap: nowrap;
+    margin-left: auto;
+    align-items: center;
+  }
+
+  .upload-actions {
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .upload-actions .record-actions {
+    flex-wrap: nowrap;
   }
 }

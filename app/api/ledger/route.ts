@@ -59,6 +59,12 @@ const CreateSchema = z
   })
   .strict();
 
+const BulkDeleteSchema = z
+  .object({
+    journalIds: z.array(z.coerce.number().int().positive()).min(1).max(200),
+  })
+  .strict();
+
 function normalizeDate(value: string) {
   const v = value.trim();
   return v.includes("T") ? v.slice(0, 10) : v;
@@ -190,6 +196,32 @@ export async function POST(req: Request) {
     }
     const message = e instanceof Error ? e.message : String(e);
     console.error("POST /api/ledger error", message);
+    return jsonError(message, 500);
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const body = BulkDeleteSchema.parse(await req.json());
+    const uniqueIds = Array.from(new Set(body.journalIds));
+    const placeholders = uniqueIds.map((_, i) => `$${i + 1}`).join(", ");
+
+    const result = await pool.query<{ journal_id: number }>(
+      `DELETE FROM expense_ledger WHERE journal_id IN (${placeholders}) RETURNING journal_id;`,
+      uniqueIds
+    );
+
+    return NextResponse.json({
+      ok: true,
+      deletedCount: result.rowCount ?? 0,
+      deletedIds: result.rows.map((r) => String(r.journal_id)),
+    });
+  } catch (e: unknown) {
+    if (e && typeof e === "object" && "name" in e && (e as { name?: string }).name === "ZodError") {
+      return jsonError("Validation error", 400, e);
+    }
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("DELETE /api/ledger error", message);
     return jsonError(message, 500);
   }
 }

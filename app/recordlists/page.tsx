@@ -52,11 +52,13 @@ type ListResponse = {
 
 type CreateResponse = {
   ok: boolean;
-  journal_id?: string;
+  journal_id?: string | number;
+  row?: LedgerRow;
   error?: { message: string };
 };
 
 type Draft = {
+  temp_id: string;
   transaction_date: string;
   debit_account: string;
   debit_vendor: string;
@@ -137,23 +139,17 @@ export default function RecordListsPage() {
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [editingValue, setEditingValue] = useState("");
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [draftRow, setDraftRow] = useState<Draft | null>(null);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [createErr, setCreateErr] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Draft>({
-    transaction_date: new Date().toISOString().slice(0, 10),
-    debit_account: "雑費",
-    debit_vendor: "",
-    debit_amount: "0",
-    debit_tax: "0",
-    credit_account: "未払金",
-    credit_amount: "0",
-    description: "",
-    memo: "",
-  });
 
   const canPrev = offset > 0;
   const canNext = offset + limit < total;
+  const selectedCount = selectedIds.size;
+  const selectableRowIds = useMemo(() => rows.map((r) => r.journal_id), [rows]);
+  const allSelected = selectableRowIds.length > 0 && selectableRowIds.every((id) => selectedIds.has(id));
 
   const queryString = useMemo(() => {
     const sp = new URLSearchParams();
@@ -170,8 +166,9 @@ export default function RecordListsPage() {
     return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
   }
 
-  function resetDraft() {
-    setDraft({
+  function makeDraft(): Draft {
+    return {
+      temp_id: `draft-${Date.now()}`,
       transaction_date: new Date().toISOString().slice(0, 10),
       debit_account: "雑費",
       debit_vendor: "",
@@ -181,7 +178,11 @@ export default function RecordListsPage() {
       credit_amount: "0",
       description: "",
       memo: "",
-    });
+    };
+  }
+
+  function resetDraft() {
+    setDraftRow(makeDraft());
     setCreateErr(null);
   }
 
@@ -232,19 +233,20 @@ export default function RecordListsPage() {
   }
 
   async function createRecord() {
+    if (!draftRow) return;
     setCreating(true);
     setCreateErr(null);
     try {
       const payload = {
-        transaction_date: draft.transaction_date,
-        debit_account: draft.debit_account,
-        debit_vendor: draft.debit_vendor,
-        debit_amount: toInt(draft.debit_amount),
-        debit_tax: toInt(draft.debit_tax),
-        credit_account: draft.credit_account,
-        credit_amount: toInt(draft.credit_amount),
-        description: draft.description,
-        memo: draft.memo,
+        transaction_date: draftRow.transaction_date,
+        debit_account: draftRow.debit_account,
+        debit_vendor: draftRow.debit_vendor,
+        debit_amount: toInt(draftRow.debit_amount),
+        debit_tax: toInt(draftRow.debit_tax),
+        credit_account: draftRow.credit_account,
+        credit_amount: toInt(draftRow.credit_amount),
+        description: draftRow.description,
+        memo: draftRow.memo,
       };
 
       const res = await fetch("/api/ledger", {
@@ -255,14 +257,42 @@ export default function RecordListsPage() {
       const json = (await res.json().catch(() => ({} as CreateResponse))) as CreateResponse;
       if (!res.ok || !json.ok) throw new Error(json.error?.message ?? `HTTP ${res.status}`);
 
-      setShowCreateModal(false);
-      resetDraft();
+      setDraftRow(null);
       setOffset(0);
       await load();
     } catch (e: unknown) {
       setCreateErr(e instanceof Error ? e.message : String(e));
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function deleteSelectedRows() {
+    if (selectedCount === 0) return;
+    const ok = confirm(`${selectedCount}件の仕訳を削除しますか？（元に戻せません）`);
+    if (!ok) return;
+
+    setDeleting(true);
+    setErr(null);
+    setStatus(null);
+    try {
+      const journalIds = Array.from(selectedIds).map((id) => Number(id)).filter(Number.isFinite);
+      const res = await fetch("/api/ledger", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ journalIds }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: { message?: string } };
+      if (!res.ok || !json.ok) throw new Error(json.error?.message ?? `HTTP ${res.status}`);
+
+      setRows((prev) => prev.filter((row) => !selectedIds.has(row.journal_id)));
+      setSelectedIds(new Set());
+      setTotal((prev) => Math.max(0, prev - journalIds.length));
+      setStatus("削除しました。");
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -275,6 +305,14 @@ export default function RecordListsPage() {
       if (!res.ok || !json.ok) throw new Error(json.error?.message ?? `HTTP ${res.status}`);
       setRows(json.rows);
       setTotal(json.total);
+      setSelectedIds((prev) => {
+        const next = new Set<string>();
+        const currentIds = new Set(json.rows.map((r) => r.journal_id));
+        prev.forEach((id) => {
+          if (currentIds.has(id)) next.add(id);
+        });
+        return next;
+      });
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -310,11 +348,14 @@ export default function RecordListsPage() {
           <button
             className="btn"
             onClick={() => {
-              resetDraft();
-              setShowCreateModal(true);
+              if (!draftRow) resetDraft();
             }}
+            disabled={Boolean(draftRow)}
           >
             新規登録
+          </button>
+          <button className="btn btn-secondary" onClick={() => void deleteSelectedRows()} disabled={deleting || selectedCount === 0}>
+            削除
           </button>
         </div>
 
@@ -361,6 +402,20 @@ export default function RecordListsPage() {
         <table className="record-grid" aria-label="仕訳一覧">
           <thead>
             <tr>
+              <th className="record-check-col">
+                <input
+                  type="checkbox"
+                  aria-label="全選択"
+                  checked={allSelected}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedIds(new Set(selectableRowIds));
+                    } else {
+                      setSelectedIds(new Set());
+                    }
+                  }}
+                />
+              </th>
               {COLUMNS.map((column) => {
                 const active = sortBy === column.key;
                 const mark = active ? (sortOrder === "asc" ? "▲" : "▼") : "";
@@ -381,8 +436,106 @@ export default function RecordListsPage() {
             </tr>
           </thead>
           <tbody>
+            {draftRow ? (
+              <tr className="record-grid-row record-grid-row-draft" aria-label="新規下書き行">
+                <td className="record-check-col" />
+                <td>新規</td>
+                <td>
+                  <input
+                    className="record-input"
+                    type="date"
+                    value={draftRow.transaction_date}
+                    onChange={(e) => setDraftRow((d) => (d ? { ...d, transaction_date: e.target.value } : d))}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="record-input"
+                    value={draftRow.debit_account}
+                    onChange={(e) => setDraftRow((d) => (d ? { ...d, debit_account: e.target.value } : d))}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="record-input"
+                    value={draftRow.debit_vendor}
+                    onChange={(e) => setDraftRow((d) => (d ? { ...d, debit_vendor: e.target.value } : d))}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="record-input"
+                    inputMode="numeric"
+                    value={draftRow.debit_tax}
+                    onChange={(e) => setDraftRow((d) => (d ? { ...d, debit_tax: e.target.value } : d))}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="record-input"
+                    inputMode="numeric"
+                    value={draftRow.debit_amount}
+                    onChange={(e) => setDraftRow((d) => (d ? { ...d, debit_amount: e.target.value } : d))}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="record-input"
+                    value={draftRow.credit_account}
+                    onChange={(e) => setDraftRow((d) => (d ? { ...d, credit_account: e.target.value } : d))}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="record-input"
+                    inputMode="numeric"
+                    value={draftRow.credit_amount}
+                    onChange={(e) => setDraftRow((d) => (d ? { ...d, credit_amount: e.target.value } : d))}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="record-input"
+                    value={draftRow.description}
+                    onChange={(e) => setDraftRow((d) => (d ? { ...d, description: e.target.value } : d))}
+                  />
+                </td>
+                <td>
+                  <div className="record-inline-edit">
+                    <input
+                      className="record-input"
+                      value={draftRow.memo}
+                      onChange={(e) => setDraftRow((d) => (d ? { ...d, memo: e.target.value } : d))}
+                    />
+                    <div className="record-inline-actions">
+                      <button className="btn" disabled={creating} onClick={() => void createRecord()}>
+                        保存
+                      </button>
+                      <button className="btn btn-secondary" disabled={creating} onClick={() => setDraftRow(null)}>
+                        キャンセル
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            ) : null}
             {rows.map((r) => (
               <tr key={r.journal_id} className="record-grid-row" aria-label={`仕訳ID ${r.journal_id}`}>
+                <td className="record-check-col">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(r.journal_id)}
+                    onChange={(e) => {
+                      setSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        if (e.target.checked) next.add(r.journal_id);
+                        else next.delete(r.journal_id);
+                        return next;
+                      });
+                    }}
+                    aria-label={`仕訳ID ${r.journal_id} を選択`}
+                  />
+                </td>
                 {COLUMNS.map((column) => {
                   const field = column.editable;
                   const isEditing =
@@ -457,113 +610,7 @@ export default function RecordListsPage() {
         </table>
       </div>
       {rows.length === 0 ? <div className="record-card">レコードがありません</div> : null}
-
-      {showCreateModal ? (
-        <div className="record-modal-overlay" role="dialog" aria-modal="true" aria-label="仕訳新規登録">
-          <div className="record-modal">
-            <h3 className="page-title" style={{ marginBottom: 4 }}>
-              新規レコード登録
-            </h3>
-            <p className="record-meta">既存レコード編集と同じ項目で登録できます。</p>
-
-            {createErr ? <p className="status-fail">Error: {createErr}</p> : null}
-
-            <div className="record-field">
-              <span className="record-label">取引日</span>
-              <input
-                className="record-input"
-                value={draft.transaction_date}
-                onChange={(e) => setDraft((d) => ({ ...d, transaction_date: e.target.value }))}
-              />
-            </div>
-            <div className="record-field">
-              <span className="record-label">借方科目</span>
-              <input
-                className="record-input"
-                value={draft.debit_account}
-                onChange={(e) => setDraft((d) => ({ ...d, debit_account: e.target.value }))}
-              />
-            </div>
-            <div className="record-field">
-              <span className="record-label">取引先</span>
-              <input
-                className="record-input"
-                value={draft.debit_vendor}
-                onChange={(e) => setDraft((d) => ({ ...d, debit_vendor: e.target.value }))}
-              />
-            </div>
-            <div className="record-field">
-              <span className="record-label">借方税額</span>
-              <input
-                className="record-input"
-                value={draft.debit_tax}
-                onChange={(e) => setDraft((d) => ({ ...d, debit_tax: e.target.value }))}
-                inputMode="numeric"
-              />
-            </div>
-            <div className="record-field">
-              <span className="record-label">借方金額</span>
-              <input
-                className="record-input"
-                value={draft.debit_amount}
-                onChange={(e) => setDraft((d) => ({ ...d, debit_amount: e.target.value }))}
-                inputMode="numeric"
-              />
-            </div>
-            <div className="record-field">
-              <span className="record-label">貸方科目</span>
-              <input
-                className="record-input"
-                value={draft.credit_account}
-                onChange={(e) => setDraft((d) => ({ ...d, credit_account: e.target.value }))}
-              />
-            </div>
-            <div className="record-field">
-              <span className="record-label">貸方金額</span>
-              <input
-                className="record-input"
-                value={draft.credit_amount}
-                onChange={(e) => setDraft((d) => ({ ...d, credit_amount: e.target.value }))}
-                inputMode="numeric"
-              />
-            </div>
-            <div className="record-field">
-              <span className="record-label">摘要</span>
-              <textarea
-                className="record-input"
-                value={draft.description}
-                onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
-                rows={3}
-              />
-            </div>
-            <div className="record-field">
-              <span className="record-label">メモ</span>
-              <textarea
-                className="record-input"
-                value={draft.memo}
-                onChange={(e) => setDraft((d) => ({ ...d, memo: e.target.value }))}
-                rows={3}
-              />
-            </div>
-
-            <div className="record-actions">
-              <button className="btn" disabled={creating} onClick={createRecord}>
-                登録
-              </button>
-              <button
-                className="btn btn-secondary"
-                disabled={creating}
-                onClick={() => {
-                  setShowCreateModal(false);
-                  resetDraft();
-                }}
-              >
-                キャンセル
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {createErr ? <p className="status-fail">Error: {createErr}</p> : null}
     </main>
   );
 }

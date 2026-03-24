@@ -354,6 +354,12 @@ button {
   text-align: left;
 }
 
+.record-check-col {
+  width: 40px;
+  min-width: 40px;
+  text-align: center !important;
+}
+
 .record-grid th:last-child,
 .record-grid td:last-child {
   border-right: none;
@@ -370,6 +376,10 @@ button {
 .record-grid-row:hover td,
 .record-grid-row:focus-visible td {
   background: #f8fafc;
+}
+
+.record-grid-row-draft td {
+  background: #eff6ff;
 }
 
 .record-sort-btn {

@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 type LedgerRow = {
   journal_id: string;
@@ -16,6 +14,32 @@ type LedgerRow = {
   description: string | null;
   memo: string | null;
 };
+
+type SortBy =
+  | "journal_id"
+  | "transaction_date"
+  | "debit_account"
+  | "debit_vendor"
+  | "debit_tax"
+  | "debit_amount"
+  | "credit_account"
+  | "credit_amount"
+  | "description"
+  | "memo"
+  | "created_at";
+
+type SortOrder = "asc" | "desc";
+
+type EditableField =
+  | "transaction_date"
+  | "debit_account"
+  | "debit_vendor"
+  | "debit_tax"
+  | "debit_amount"
+  | "credit_account"
+  | "credit_amount"
+  | "description"
+  | "memo";
 
 type ListResponse = {
   ok: boolean;
@@ -44,22 +68,75 @@ type Draft = {
   memo: string;
 };
 
+type EditingCell = {
+  journalId: string;
+  field: EditableField;
+};
+
+const PAGE_SIZE = 100;
+const EDITABLE_FIELDS: EditableField[] = [
+  "transaction_date",
+  "debit_account",
+  "debit_vendor",
+  "debit_tax",
+  "debit_amount",
+  "credit_account",
+  "credit_amount",
+  "description",
+  "memo",
+];
+const NUMERIC_FIELDS = new Set<EditableField>(["debit_tax", "debit_amount", "credit_amount"]);
+
+const COLUMNS: Array<{ key: SortBy; label: string; editable?: EditableField }> = [
+  { key: "journal_id", label: "仕訳ID" },
+  { key: "transaction_date", label: "取引日", editable: "transaction_date" },
+  { key: "debit_account", label: "借方科目", editable: "debit_account" },
+  { key: "debit_vendor", label: "取引先", editable: "debit_vendor" },
+  { key: "debit_tax", label: "借方税額", editable: "debit_tax" },
+  { key: "debit_amount", label: "借方金額", editable: "debit_amount" },
+  { key: "credit_account", label: "貸方科目", editable: "credit_account" },
+  { key: "credit_amount", label: "貸方金額", editable: "credit_amount" },
+  { key: "description", label: "摘要", editable: "description" },
+  { key: "memo", label: "メモ", editable: "memo" },
+];
+
 function toDateInputValue(v: string) {
   if (!v) return "";
   return v.includes("T") ? v.slice(0, 10) : v;
 }
 
+function toCellValue(row: LedgerRow, field: EditableField) {
+  const value = row[field];
+  if (field === "transaction_date") return toDateInputValue(String(value ?? ""));
+  if (value === null || value === undefined || value === "") return "";
+  return String(value);
+}
+
+function toPatchValue(field: EditableField, value: string) {
+  if (NUMERIC_FIELDS.has(field)) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) throw new Error("数値形式で入力してください。");
+    return Math.max(0, Math.trunc(n));
+  }
+  return value;
+}
+
 export default function RecordListsPage() {
-  const router = useRouter();
   const [q, setQ] = useState("");
-  const [limit, setLimit] = useState(50);
+  const [limit] = useState(PAGE_SIZE);
   const [offset, setOffset] = useState(0);
+  const [sortBy, setSortBy] = useState<SortBy>("transaction_date");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [savingCell, setSavingCell] = useState<string | null>(null);
 
   const [total, setTotal] = useState(0);
   const [rows, setRows] = useState<LedgerRow[]>([]);
+  const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
+  const [editingValue, setEditingValue] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createErr, setCreateErr] = useState<string | null>(null);
@@ -83,8 +160,10 @@ export default function RecordListsPage() {
     if (q.trim()) sp.set("q", q.trim());
     sp.set("limit", String(limit));
     sp.set("offset", String(offset));
+    sp.set("sortBy", sortBy);
+    sp.set("sortOrder", sortOrder);
     return sp.toString();
-  }, [q, limit, offset]);
+  }, [q, limit, offset, sortBy, sortOrder]);
 
   function toInt(v: string): number {
     const n = Number(v);
@@ -104,6 +183,52 @@ export default function RecordListsPage() {
       memo: "",
     });
     setCreateErr(null);
+  }
+
+  function startEdit(row: LedgerRow, field: EditableField) {
+    setStatus(null);
+    setErr(null);
+    setEditingCell({ journalId: row.journal_id, field });
+    setEditingValue(toCellValue(row, field));
+  }
+
+  function cancelEdit() {
+    setEditingCell(null);
+    setEditingValue("");
+  }
+
+  async function saveCell() {
+    if (!editingCell) return;
+
+    const { journalId, field } = editingCell;
+    const key = `${journalId}:${field}`;
+    setSavingCell(key);
+    setErr(null);
+    setStatus(null);
+
+    try {
+      const payload: Record<string, string | number> = {
+        [field]: toPatchValue(field, editingValue),
+      };
+
+      const res = await fetch(`/api/ledger/${journalId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: { message?: string } };
+      if (!res.ok || !json.ok) throw new Error(json.error?.message ?? `HTTP ${res.status}`);
+
+      setRows((prev) =>
+        prev.map((row) => (row.journal_id === journalId ? { ...row, [field]: payload[field] } : row))
+      );
+      setStatus("更新しました。");
+      cancelEdit();
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingCell(null);
+    }
   }
 
   async function createRecord() {
@@ -157,6 +282,19 @@ export default function RecordListsPage() {
     }
   }
 
+  function toggleSort(column: SortBy) {
+    setOffset(0);
+    setEditingCell(null);
+    setSortBy((prev) => {
+      if (prev !== column) {
+        setSortOrder("asc");
+        return column;
+      }
+      setSortOrder((current) => (current === "asc" ? "desc" : "asc"));
+      return prev;
+    });
+  }
+
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -165,13 +303,10 @@ export default function RecordListsPage() {
   return (
     <main>
       <h2 className="page-title">Record Lists</h2>
-      <p className="page-subtitle">仕訳を一覧で確認して、必要なレコードを開きます。</p>
+      <p className="page-subtitle">仕訳を一覧で確認し、セルをダブルクリックして編集します。</p>
 
       <div className="record-toolbar">
         <div className="record-actions">
-          <Link className="btn btn-secondary" href="/upload">
-            アップロードへ
-          </Link>
           <button
             className="btn"
             onClick={() => {
@@ -194,22 +329,7 @@ export default function RecordListsPage() {
             placeholder="検索（仕訳ID/店名/科目/摘要/メモ/receipt_idなど）"
           />
 
-          <select
-            className="record-select"
-            value={limit}
-            onChange={(e) => {
-              setLimit(Number(e.target.value));
-              setOffset(0);
-            }}
-          >
-            <option value={20}>20</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-          </select>
-
-          <button className="btn btn-secondary" disabled={loading} onClick={() => load()}>
-            再読み込み
-          </button>
+          <span className="record-meta">100件/ページ固定</span>
 
           <div className="record-actions">
             <button
@@ -234,50 +354,103 @@ export default function RecordListsPage() {
       </div>
 
       {err ? <p style={{ color: "crimson" }}>Error: {err}</p> : null}
+      {status ? <p className="status-success">{status}</p> : null}
       {loading ? <p className="record-meta">Loading...</p> : null}
 
       <div className="record-table-wrap">
         <table className="record-grid" aria-label="仕訳一覧">
           <thead>
             <tr>
-              <th>仕訳ID</th>
-              <th>取引日</th>
-              <th>借方科目</th>
-              <th>取引先</th>
-              <th>借方税額</th>
-              <th>借方金額</th>
-              <th>貸方科目</th>
-              <th>貸方金額</th>
-              <th>摘要</th>
-              <th>メモ</th>
+              {COLUMNS.map((column) => {
+                const active = sortBy === column.key;
+                const mark = active ? (sortOrder === "asc" ? "▲" : "▼") : "";
+                return (
+                  <th key={column.key}>
+                    <button
+                      type="button"
+                      className={`record-sort-btn${active ? " active" : ""}`}
+                      onClick={() => toggleSort(column.key)}
+                      aria-label={`${column.label}で並び替え`}
+                    >
+                      <span>{column.label}</span>
+                      <span className="record-sort-mark">{mark}</span>
+                    </button>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr
-                key={r.journal_id}
-                tabIndex={0}
-                role="link"
-                className="record-grid-row"
-                onClick={() => router.push(`/recordedit/${r.journal_id}`)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    router.push(`/recordedit/${r.journal_id}`);
+              <tr key={r.journal_id} className="record-grid-row" aria-label={`仕訳ID ${r.journal_id}`}>
+                {COLUMNS.map((column) => {
+                  const field = column.editable;
+                  const isEditing =
+                    field && editingCell?.journalId === r.journal_id && editingCell.field === field;
+                  const saving = savingCell === `${r.journal_id}:${field}`;
+
+                  if (!field) {
+                    return <td key={column.key}>{r.journal_id}</td>;
                   }
-                }}
-                aria-label={`仕訳ID ${r.journal_id} の詳細へ`}
-              >
-                <td>{r.journal_id}</td>
-                <td>{toDateInputValue(r.transaction_date)}</td>
-                <td>{r.debit_account}</td>
-                <td>{r.debit_vendor ?? "-"}</td>
-                <td>{r.debit_tax ?? 0}</td>
-                <td>{r.debit_amount ?? 0}</td>
-                <td>{r.credit_account ?? "-"}</td>
-                <td>{r.credit_amount ?? 0}</td>
-                <td>{r.description || "-"}</td>
-                <td>{r.memo || "-"}</td>
+
+                  return (
+                    <td
+                      key={column.key}
+                      onDoubleClick={() => {
+                        if (EDITABLE_FIELDS.includes(field)) {
+                          startEdit(r, field);
+                        }
+                      }}
+                    >
+                      {isEditing ? (
+                        <div className="record-inline-edit">
+                          {field === "description" || field === "memo" ? (
+                            <textarea
+                              className="record-input"
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              rows={2}
+                              autoFocus
+                            />
+                          ) : (
+                            <input
+                              className="record-input"
+                              type={field === "transaction_date" ? "date" : "text"}
+                              inputMode={NUMERIC_FIELDS.has(field) ? "numeric" : undefined}
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  void saveCell();
+                                }
+                                if (e.key === "Escape") {
+                                  e.preventDefault();
+                                  cancelEdit();
+                                }
+                              }}
+                            />
+                          )}
+                          <div className="record-inline-actions">
+                            <button className="btn" disabled={saving} onClick={() => void saveCell()}>
+                              保存
+                            </button>
+                            <button className="btn btn-secondary" disabled={saving} onClick={cancelEdit}>
+                              キャンセル
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="record-cell-value">
+                          {field === "transaction_date"
+                            ? toDateInputValue(String(r[field] ?? "")) || "-"
+                            : r[field] ?? "-"}
+                        </span>
+                      )}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>

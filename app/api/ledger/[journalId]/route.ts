@@ -46,8 +46,8 @@ export async function GET(_req: Request, { params }: RouteContext) {
       `
         SELECT
           journal_id, transaction_date,
-          debit_account, debit_vendor, debit_amount, debit_tax,
-          credit_account, credit_amount,
+          debit_account, debit_vendor, debit_amount, debit_tax, debit_invoice_category,
+          credit_account, credit_vendor, credit_amount, credit_tax, credit_invoice_category,
           description, memo
         FROM expense_ledger
         WHERE journal_id::text = $1;

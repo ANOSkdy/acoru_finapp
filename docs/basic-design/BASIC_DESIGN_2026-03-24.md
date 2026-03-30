@@ -1,120 +1,113 @@
 # 基本設計書（acoru_finapp）
 
 - 作成日: 2026-03-24
-- 対象: `ANOSkdy/acoru_finapp`（リポジトリ実装ベース）
-- 根拠優先順位: `package.json` → `app/**` / `app/api/**` → `lib/**` → `db/migrations/**` → `README.md`（補助）
+- 対象: ANOSkdy/acoru_finapp
+- 記載方針: 現行実装の事実を優先し、未確認事項は補完しない。
 
-## 1. システム概要（現行実装）
+## 1. システム概要
 
-現行実装では、領収書ファイル（JPG/PNG/PDF）をアップロードし、`receipt_queue` に登録後、Cron API で Gemini 解析して `expense_ledger` へ仕訳登録する。登録済み仕訳は一覧・編集・削除できる。
+現行実装では、領収書ファイルをアップロードし、キュー登録後に Cron 経由で Gemini 解析を行い、`expense_ledger` へ仕訳データを登録する構成になっている。
 
-- フロント: Next.js App Router のクライアント画面（`/recordlists`, `/recordedit/[journalId]`, `/upload`）
-- サーバー: Route Handler（Node.js runtime 明示）
-- DB: Neon Postgres（`DATABASE_URL` を server-only env で使用）
+- フロントエンド: Next.js App Router（`/recordlists`, `/recordedit/[journalId]`, `/upload`）
+- API: Next.js Route Handler（`runtime = "nodejs"`）
+- DB: Neon Postgres（`DATABASE_URL` をサーバー側で参照）
 - Blob: Vercel Blob
 - AI: Gemini（`@google/genai`）
 
-## 2. ユーザーフロー（現行実装）
+## 2. 現行ユーザーフロー
 
-1. `/upload` で領収書ファイルを選択し、`/api/blob/upload` で Blob アップロード。  
-2. `/api/receipts/register` で `receipt_queue` に upsert。  
-3. `/api/cron/process-receipts` がキューを予約し、Blob 読み出し→Gemini 解析→`expense_ledger` INSERT。  
-4. 成功時は `receipt_queue` を `PROCESSED`、失敗時は `ERROR` + `next_retry_at` を更新。  
-5. `/recordlists` で一覧確認し、`/recordedit/[journalId]` で更新/削除する。
+1. `/upload` で JPG/PNG/PDF を選択し、`/api/blob/upload` でアップロードする。  
+2. `/api/receipts/register` で `receipt_queue` に受付情報を登録する。  
+3. `GET /api/cron/process-receipts` が `receipt_queue` を処理し、Blob 取得・Gemini 解析・`expense_ledger` 登録を実行する。  
+4. 成功時はキューを `PROCESSED`、失敗時は `ERROR` と再試行情報を更新する。  
+5. `/recordlists` と `/recordedit/[journalId]` で仕訳を参照・更新・削除する。
 
-## 3. アーキテクチャ（現行実装）
+## 3. アーキテクチャ
 
-- フレームワーク: Next.js 16.1.1 / React 19 / TypeScript
-- レイアウト: `app/layout.tsx` + `AppShell`
-- DB 接続: `@neondatabase/serverless` の `Pool` singleton
-- バッチ排他: `cron_locks` テーブル + `acquireCronLock`
-- 入力検証: Zod
-- SQL: parameterized SQL
+- Next.js 16 / React 19 / TypeScript
+- DB アクセスはサーバー側実装（Route Handler / lib）
+- 入力検証は Zod
+- SQL はプレースホルダを使った parameterized SQL
+- Cron 多重実行は `cron_locks` による排他制御
 
 補足:
-- `NEON_DATABASE_URL` は本リポジトリ上では未使用（not confirmed in this repository）。
-- README はテンプレート内容であり、実装一次情報ではない。
+- `DATABASE_URL` は確認できるが、`NEON_DATABASE_URL` の実利用は本リポジトリ上では未確認。
 
-## 4. 画面一覧（現行実装）
+## 4. 画面一覧
 
-- `/` : `/recordlists` へリダイレクト
-- `/recordlists` : 検索・ページング・新規仕訳登録
+- `/` : `/recordlists` へ遷移
+- `/recordlists` : 仕訳一覧、検索、並び替え、インライン編集、新規作成、複数削除
 - `/recordedit` : `/recordlists` へリダイレクト
-- `/recordedit/[journalId]` : 仕訳詳細表示、更新、削除
-- `/upload` : 複数ファイルアップロード、アップロード結果表示
+- `/recordedit/[journalId]` : 単票編集・削除
+- `/upload` : 複数ファイルアップロードと結果表示
 
-## 5. API 概要（現行実装）
+## 5. API 概要
 
-- `POST /api/blob/upload` : Blob アップロードトークン発行（UUID 検証）
-- `POST /api/receipts/register` : 受付情報を `receipt_queue` へ upsert
-- `GET /api/ledger` : 台帳一覧取得（q/limit/offset）
-- `POST /api/ledger` : 仕訳新規作成
-- `GET /api/ledger/[journalId]` : 仕訳1件取得
+- `POST /api/blob/upload` : Blob アップロード用トークン発行
+- `POST /api/receipts/register` : 受付情報を `receipt_queue` に upsert
+- `GET /api/ledger` : 仕訳一覧取得（検索・ページング・ソート）
+- `POST /api/ledger` : 仕訳作成
+- `DELETE /api/ledger` : 複数仕訳削除
+- `GET /api/ledger/[journalId]` : 仕訳単票取得
 - `PATCH /api/ledger/[journalId]` : 仕訳部分更新
-- `DELETE /api/ledger/[journalId]` : 仕訳削除
-- `GET /api/cron/process-receipts` : キュー処理・解析・仕訳登録
+- `DELETE /api/ledger/[journalId]` : 仕訳単票削除
+- `GET /api/cron/process-receipts` : キュー処理（認証付き）
 
-## 6. データモデル概要（現行実装）
+## 6. データモデル概要
 
 ### 6.1 migration で確認できるテーブル
 
 - `receipt_queue`
-  - 処理状態（UNPROCESSED/PROCESSING/PROCESSED/ERROR）
-  - リトライ情報（`error_count`, `last_error_message`, `next_retry_at`）
-  - 解析結果格納（`gemini_response`）
+  - 領収書受付、処理状態、エラー再試行、Gemini 応答保存
 - `cron_locks`
-  - Cron 多重実行抑止
+  - Cron 排他用ロック
 
-### 6.2 コード参照で確認できるテーブル
+### 6.2 コードから参照されるテーブル
 
 - `expense_ledger`
-  - 現行実装では CRUD 対象として利用。
-  - ただし DDL/migration は本リポジトリ上では未確認（not confirmed in this repository）。
-  - 列構成は inferred-from-code。
+  - 現行実装で CRUD と解析結果登録の対象
+  - 正式DDLは本リポジトリ上で未確認
+  - 列情報は inferred-from-code としてのみ把握可能
 
-## 7. 環境変数概要（現行実装）
+## 7. 環境変数
 
-`lib/env.ts` で server-only として参照される主な値:
+`lib/env.ts` で参照される主な変数:
 
 - `DATABASE_URL`
 - `BLOB_READ_WRITE_TOKEN`
-- `GEMINI_API_KEY`, `GEMINI_MODEL`
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL`
 - `CRON_SECRET`
-- `MAX_FILE_BYTES`, `MAX_FILES_PER_RUN`
+- `MAX_FILE_BYTES`
+- `MAX_FILES_PER_RUN`
 - `DEFAULT_CREDIT_ACCOUNT`
 - `CRON_LOCK_TTL_SECONDS`
 
-## 8. 非機能概要（現行実装）
+## 8. 非機能概要
 
-- バリデーション: Zod による query/body 検証
-- SQL セーフティ: プレースホルダ利用
-- リトライ制御: `next_retry_at` に基づく再処理
-- 排他制御: `cron_locks` + TTL
-- シークレット保護: クライアント側で env を直接参照する実装は未確認
+- バリデーション: Zod で request を検証
+- セキュリティ: 機密値はサーバー側 env 前提
+- 可用性: `receipt_queue` の再試行制御（`next_retry_at`）
+- 同時実行制御: `cron_locks` による排他
+- 実行基盤: DB を使う API は `runtime = "nodejs"`
 
-## 9. 推奨拡張方向（提案・未実装）
+## 9. 現行の制約・ギャップ
 
-> 以下は拡張案としてのロードマップ記述であり、現行実装には未実装。
+- `expense_ledger` の migration/DDL が確認できないため、制約・インデックスの正式情報は本リポジトリ上では未確認。
+- 認証/認可（ユーザー単位アクセス制御）の実装は本リポジトリ上では未確認。
+- tests/CI の整備状況は本リポジトリ上では未確認。
 
-### 9.1 なぜ現行台帳アプリを財務プラットフォームへ拡張できるか
+## 10. 推奨拡張方針
 
-現行実装では、すでに「証憑アップロード」「仕訳データ蓄積」「処理ステータス管理」の基盤があるため、科目体系と期間軸を整備することで試算表・財務諸表・ダッシュボードへ段階拡張しやすい。
+### 10.1 現行実装
 
-### 9.2 将来の到達機能（提案）
+- 現行実装では、証憑アップロード・AI 解析・経費台帳 CRUD までが実装済み。
+- 現行実装では、単一テーブル中心の台帳運用であり、財務三表や KPI 可視化の専用データ基盤は未実装。
 
-- 試算表（Trial Balance）
-- 財務諸表（PL/BS/CF）
-- ダッシュボード（KPI・推移・処理状況）
-- レビュー/管理ワークフロー（承認・差戻し等の運用設計）
+### 10.2 将来の拡張案
 
-### 9.3 拡張の基本原則（提案）
-
-- 本書の追加内容は docs/roadmap のみで、実装変更は行わない。
-- 高度レポートより先に、勘定科目正規化と期間定義を先行する。
-- ダッシュボード強化は、試算表/PL/BS の算出基盤確立後に行う。
-
-## 10. 未確認事項（明示）
-
-- `expense_ledger` の DDL は not confirmed in this repository。
-- 認証/認可の全体設計（ユーザー管理、権限制御）は not confirmed in this repository。
-- CI/自動テスト運用は not confirmed in this repository。
+- 拡張案として、会計基盤整備（勘定科目体系・会計期間）を先行する。
+- 拡張案として、試算表を先に安定化し、PL / BS 算出へ接続する。
+- 拡張案として、Dashboard / KPI を追加し、運用モニタリングを強化する。
+- 拡張案として、複合仕訳対応（複数明細）に移行可能なモデルへ段階的に進化させる。
+- 拡張案として、最終的な財務基盤化（帳票・分析・運用の一体化）を目標にする。

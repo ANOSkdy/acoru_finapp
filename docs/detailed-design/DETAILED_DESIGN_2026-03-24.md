@@ -1,218 +1,177 @@
 # 詳細設計書（acoru_finapp）
 
 - 作成日: 2026-03-24
-- 対象: `ANOSkdy/acoru_finapp`
-- 方針: 実装準拠（推測禁止）。未確認事項は明示。
+- 対象: ANOSkdy/acoru_finapp
+- 記載方針: 現行コードの事実を優先し、提案事項は最終章に分離する。
 
-## 1. モジュール構成（現行実装）
+## 1. ディレクトリ / モジュール構成
 
 - `app/layout.tsx`
-  - ルートレイアウト。`AppShell` を全ページへ適用。
+  - ルートレイアウト。`AppShell` を全ページに適用。
 - `app/components/AppShell.tsx`
-  - ヘッダ/下部ナビ（`/recordlists`, `/upload`）。
+  - 共通ヘッダ・下部ナビゲーション表示。
 - `app/recordlists/page.tsx`
-  - 台帳一覧、検索、ページング、新規作成モーダル。
+  - 一覧表示、検索、ソート、インライン編集、新規作成、複数削除。
 - `app/recordedit/page.tsx`
-  - `/recordlists` へリダイレクト。
+  - `/recordlists` へのリダイレクト。
 - `app/recordedit/[journalId]/page.tsx`
-  - 台帳詳細表示、更新、削除。
+  - 単票編集と削除。
 - `app/upload/page.tsx`
-  - ファイル選択、Blob アップロード、受付登録。
-- `app/api/blob/upload/route.ts`
-  - Blob トークン発行。
-- `app/api/receipts/register/route.ts`
-  - `receipt_queue` upsert。
-- `app/api/ledger/route.ts`
-  - 台帳一覧取得 + 新規作成。
-- `app/api/ledger/[journalId]/route.ts`
-  - 単票取得 + 部分更新 + 削除。
-- `app/api/cron/process-receipts/route.ts`
-  - キュー処理、Gemini 解析、台帳反映。
+  - 複数ファイル選択、Blob アップロード、受付登録。
+- `app/api/**`
+  - ledger CRUD、blob upload、receipt register、cron 処理。
 - `lib/env.ts`
-  - 環境変数の Zod パース。
+  - 環境変数を Zod で検証して export。
 - `lib/db.ts`
-  - Neon Pool singleton。
+  - Neon `Pool` の singleton 管理。
 - `lib/cronLock.ts`
-  - Cron ロック獲得/解放。
+  - `cron_locks` を使ったロック獲得・解放。
 - `lib/receiptQueue.ts`
-  - キュー予約・状態更新。
+  - `receipt_queue` の upsert / reserve / mark。
 - `lib/gemini.ts`
-  - 解析プロンプト + JSON レスポンス処理。
-- `db/migrations/001_receipt_queue_and_cron_locks.sql`
-  - `receipt_queue`, `cron_locks` DDL。
+  - Gemini 呼び出しと JSON 応答パース。
 
-## 2. 画面詳細（現行実装）
+## 2. 画面別挙動
 
-### 2.1 layout / AppShell
+### 2.1 `/recordlists`
 
-- `layout.tsx`
-  - `Geist`, `Geist_Mono` を適用。
-  - `metadata.title = "Acoru_経費台帳"`。
-- `AppShell.tsx`
-  - `usePathname()` で active タブ切替。
-  - ナビ項目は Record List / Upload の2つ。
+- `GET /api/ledger` を `no-store` で取得。
+- 検索語、ページング、ソート列・方向をクエリ化。
+- セルのダブルクリックでインライン編集し、`PATCH /api/ledger/[journalId]` を呼ぶ。
+- 新規行は `POST /api/ledger`、削除は `DELETE /api/ledger`（複数 ID）を呼ぶ。
 
-### 2.2 `/recordlists`
+### 2.2 `/recordedit/[journalId]`
 
-- 一覧取得
-  - `q`, `limit`, `offset` から query string を生成。
-  - `GET /api/ledger` を `cache: "no-store"` で呼ぶ。
-- 新規登録
-  - モーダル入力を `POST /api/ledger` に送信。
-  - 金額系は画面側で整数化。
-- 画面責務
-  - 検索、ページング、再読み込み、詳細画面遷移。
+- 初期表示で `GET /api/ledger/[journalId]` を呼ぶ。
+- 保存時に `PATCH /api/ledger/[journalId]` を呼ぶ。
+- 削除時に `DELETE /api/ledger/[journalId]` を呼び、一覧へ遷移。
 
-### 2.3 `/recordedit/[journalId]`
+### 2.3 `/upload`
 
-- 初期取得
-  - `GET /api/ledger/{journalId}`。
-- 更新
-  - `PATCH /api/ledger/{journalId}`（部分更新）。
-- 削除
-  - `DELETE /api/ledger/{journalId}`。
+- 許可 MIME: `image/jpeg`, `image/png`, `application/pdf`。
+- クライアントで `@vercel/blob/client` の `upload` を使用。
+- アップロード完了後に `POST /api/receipts/register` を呼ぶ。
 
-### 2.4 `/upload`
-
-- 入力許可
-  - 拡張子 `.jpg,.jpeg,.png,.pdf`
-  - MIME `image/jpeg`, `image/png`, `application/pdf`
-- 1ファイルごとの処理
-  1. UUID 採番（`receiptId`）
-  2. `/api/blob/upload` 経由で Blob へアップロード
-  3. `/api/receipts/register` で DB キュー登録
-  4. 成否を UI に表示
-
-## 3. API 詳細（現行実装）
+## 3. API 別挙動
 
 ### 3.1 `POST /api/blob/upload`
 
-- 役割: Blob トークン発行
-- 入力: `clientPayload.receiptId`（UUID 必須）
-- 制約: MIME/最大サイズ（`MAX_FILE_BYTES`）
+- `clientPayload.receiptId` を UUID として検証。
+- Vercel Blob のアップロードトークンを返却。
+- `MAX_FILE_BYTES` と MIME 制限を適用。
 
 ### 3.2 `POST /api/receipts/register`
 
-- 役割: キュー登録
-- 入力: `receiptId`, `blobUrl`, `pathname`, `fileName`, `mimeType`, `sizeBytes`
-- バリデーション: Zod
-- サイズ超過: 413
+- body を Zod で検証。
+- サイズ超過時は `413`。
+- `upsertReceiptQueue` で `receipt_queue` に登録。
 
 ### 3.3 `GET /api/ledger`
 
-- 役割: 台帳一覧
-- 入力: `q`, `limit`, `offset`
-- 実装: `ILIKE` 検索 + ページング + count/list 並列取得
+- `q/limit/offset/sortBy/sortOrder` を検証。
+- `expense_ledger` へ `ILIKE` 検索を実行。
+- `COUNT` と一覧取得を並列実行して返却。
 
 ### 3.4 `POST /api/ledger`
 
-- 役割: 台帳作成
-- 入力: 取引日/借方/貸方/摘要/メモ等
-- 実装: `expense_ledger` INSERT、`processed_at = now()`
+- body を検証して `expense_ledger` に INSERT。
+- `journal_id` を返却。
 
-### 3.5 `GET /api/ledger/[journalId]`
+### 3.5 `DELETE /api/ledger`
 
-- 役割: 単票取得
-- 入力: 数値 `journalId`
-- 未存在: 404
+- `journalIds` を検証し、`IN (...)` で複数削除。
+- 実削除件数・ID を返却。
 
-### 3.6 `PATCH /api/ledger/[journalId]`
+### 3.6 `GET /api/ledger/[journalId]`
 
-- 役割: 部分更新
-- 入力: 任意更新項目（strict）
-- 実装: 受領項目のみ動的 `SET` 構築
+- `journalId` の数値形式チェック。
+- 1件取得し、未存在なら `404`。
 
-### 3.7 `DELETE /api/ledger/[journalId]`
+### 3.7 `PATCH /api/ledger/[journalId]`
 
-- 役割: 単票削除
-- 入力: 数値 `journalId`
+- JSON を strict 検証。
+- 指定項目のみ動的 `SET` で更新。
+- 更新対象が無い場合は `400`。
 
-### 3.8 `GET /api/cron/process-receipts`
+### 3.8 `DELETE /api/ledger/[journalId]`
 
-- 役割: キュー処理バッチ
-- 認証: `Authorization: Bearer {CRON_SECRET}`
-- 処理:
-  1. Cron ロック獲得
-  2. 対象キュー予約（`FOR UPDATE SKIP LOCKED`）
-  3. Blob 取得 → Gemini 解析
-  4. `expense_ledger` INSERT（トランザクション）
-  5. 成功/失敗でキュー状態更新
-  6. Cron ロック解放
+- `journalId` を単票削除し、未存在は `404`。
 
-## 4. データ詳細（現行実装）
+### 3.9 `GET /api/cron/process-receipts`
 
-### 4.1 `receipt_queue`（migration 確認済み）
+- `Authorization: Bearer {CRON_SECRET}` を検証。
+- `acquireCronLock` で排他確保。
+- `reserveReceipts` で対象確保、Blob 取得、Gemini 解析。
+- `expense_ledger` へ INSERT 後、`markProcessed`。
+- 失敗時は `markError`。
+- 最後に `releaseCronLock`。
 
-- PK: `receipt_id (UUID)`
-- 状態: `UNPROCESSED | PROCESSING | PROCESSED | ERROR`
-- 補助列: エラー情報、再試行時刻、解析結果 JSONB
-- インデックス:
-  - `(status, next_retry_at)`
-  - `(uploaded_at)`
+## 4. ライブラリ責務
 
-### 4.2 `cron_locks`（migration 確認済み）
+- `lib/env.ts`: server-only 前提の環境変数の正規化。
+- `lib/db.ts`: DB コネクション管理。
+- `lib/cronLock.ts`: Cron 多重起動防止。
+- `lib/receiptQueue.ts`: 受付キュー状態遷移。
+- `lib/gemini.ts`: 領収書解析プロンプト実行と JSON 化。
 
-- PK: `lock_name`
-- ロック管理: `locked_until`, `locked_by`, `locked_at`
+## 5. DB 詳細
 
-### 4.3 `expense_ledger`（inferred-from-code）
+### 5.1 `receipt_queue`（migration 確認済み）
 
-- 現行実装では CRUD/INSERT の中心テーブル。
-- ただし DDL は本リポジトリ上で未確認（not confirmed in this repository）。
+主な列:
+- `receipt_id` (UUID, PK)
+- `blob_url`, `pathname`, `file_name`, `mime_type`, `size_bytes`
+- `status` (`UNPROCESSED`/`PROCESSING`/`PROCESSED`/`ERROR`)
+- `error_count`, `last_error_message`, `next_retry_at`
+- `uploaded_at`, `processing_started_at`, `processed_at`
+- `gemini_response` (JSONB), `ledger_journal_id`
 
-## 5. 環境変数・ランタイム（現行実装）
+主な index:
+- `(status, next_retry_at)`
+- `(uploaded_at)`
 
-- DB: `DATABASE_URL`
-- Blob: `BLOB_READ_WRITE_TOKEN`
-- Gemini: `GEMINI_API_KEY`, `GEMINI_MODEL`
-- Cron: `CRON_SECRET`, `CRON_LOCK_TTL_SECONDS`
-- 処理上限: `MAX_FILE_BYTES`, `MAX_FILES_PER_RUN`
-- 既定勘定: `DEFAULT_CREDIT_ACCOUNT`
-- API ランタイム: `runtime = "nodejs"`
+### 5.2 `cron_locks`（migration 確認済み）
 
-注記: `NEON_DATABASE_URL` の利用は本リポジトリ上では未確認（not confirmed in this repository）。
+主な列:
+- `lock_name` (PK)
+- `locked_until`
+- `locked_by`
+- `locked_at`
 
-## 6. エラー処理・セキュリティ（現行実装）
+### 5.3 `expense_ledger`（inferred-from-code）
 
-- 入力検証: Zod
-- SQL: parameterized SQL
-- 認証: Cron API の Bearer 認証
-- シークレット露出:
-  - env はサーバーコードで参照
-  - クライアントバンドルへ機密値を渡す実装は未確認
+現行コードから参照される列（inferred-from-code）:
+- `journal_id`
+- `transaction_date`
+- `debit_account`, `debit_vendor`, `debit_amount`, `debit_tax`, `debit_invoice_category`
+- `credit_account`, `credit_vendor`, `credit_amount`, `credit_tax`, `credit_invoice_category`
+- `description`, `memo`
+- `drive_file_id`, `drive_file_name`, `drive_mime_type`
+- `gemini_response`
+- `created_at`, `processed_at`
 
-## 7. 既知ギャップ（事実ベース）
+注記:
+- 正式DDLは本リポジトリ上で未確認。
 
-- `expense_ledger` DDL: not confirmed in this repository
-- 認証/認可全体設計: not confirmed in this repository
-- テスト/CI 定義: not confirmed in this repository
+## 6. エラー処理
 
-## 8. 推奨拡張設計の検討事項（提案・未実装）
+- バリデーションエラーは `400`（一部 `413` / `404` / `401` を使用）。
+- API で例外時は `ok: false` 形式で返却。
+- `PATCH` は不正 JSON を個別検知して `400` を返却。
+- Cron 処理は1件失敗しても継続し、`receipt_queue` にエラー情報を反映。
 
-> 本章は proposed / not implemented。
+## 7. 現行設計のギャップ
 
-### 8.1 将来マスタ/ドメイン候補
+- `expense_ledger` の正式スキーマ定義が本リポジトリ上では未確認。
+- auth/access control の全体設計は本リポジトリ上では未確認。
+- tests/CI の定義は本リポジトリ上では未確認。
 
-- `account_master`（勘定科目正規化）
-- `reporting_periods`（会計期間・締め）
-- 組織/ユーザー単位スコープ（現時点では not confirmed in this repository）
+## 8. 推奨拡張設計観点（未実装）
 
-### 8.2 将来レポート API 候補
+> 以下はすべて拡張案としての proposed であり、現行実装には未実装。
 
-- `/api/reports/trial-balance`
-- `/api/reports/pl`
-- `/api/reports/bs`
-- `/api/reports/cf`
-- `/api/dashboard/summary`
-
-### 8.3 将来 UI 候補
-
-- `/dashboard`
-- 月次 KPI カード
-- 推移チャート
-- キュー/処理状況ウィジェット
-
-### 8.4 将来構造進化メモ
-
-- 現行実装では `expense_ledger` 中心の単一レコード運用。
-- 拡張案として、将来的に複合仕訳に対応する `journal` / `journal_lines` モデルへ進化させる余地がある（proposed / not implemented）。
+- `account_master` を導入し、科目体系と集計属性を明示管理する。
+- `reporting_periods`（fiscal periods）を導入し、月次・年度締めの境界を明確化する。
+- 将来レポート API として `trial-balance` / `pl` / `bs` 系を分離設計する。
+- dashboard 候補として、KPI サマリ、月次推移、キュー処理状況を整理する。
+- 将来 migration ターゲットとして `journals` / `journal_lines` へ移行し、複合仕訳を扱える構造へ拡張する。

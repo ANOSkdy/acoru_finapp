@@ -40,13 +40,10 @@ CREATE TABLE IF NOT EXISTS account_master (
   fs_section TEXT NOT NULL CHECK (fs_section IN ('BS','PL','CF','OFF')),
   normal_balance TEXT NOT NULL CHECK (normal_balance IN ('debit','credit')),
   sort_order INTEGER NOT NULL DEFAULT 0,
-  is_active BOOLEAN NOT NULL DEFAULT true,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
-CREATE INDEX IF NOT EXISTS account_master_type_active_sort_idx
-  ON account_master (account_type, is_active, sort_order);
 
 CREATE TABLE IF NOT EXISTS fiscal_periods (
   period_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -54,20 +51,16 @@ CREATE TABLE IF NOT EXISTS fiscal_periods (
   period_name TEXT NOT NULL,
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('open','closed','archived')),
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','closed','archived')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (fiscal_year, period_name),
   CHECK (start_date <= end_date)
 );
 
-CREATE INDEX IF NOT EXISTS fiscal_periods_status_dates_idx
-  ON fiscal_periods (status, start_date, end_date);
-
-ALTER TABLE expense_ledger
-  ADD COLUMN IF NOT EXISTS debit_account_code TEXT,
-  ADD COLUMN IF NOT EXISTS credit_account_code TEXT,
-  ADD COLUMN IF NOT EXISTS fiscal_period_id UUID;
+ALTER TABLE expense_ledger ADD COLUMN IF NOT EXISTS debit_account_code TEXT;
+ALTER TABLE expense_ledger ADD COLUMN IF NOT EXISTS credit_account_code TEXT;
+ALTER TABLE expense_ledger ADD COLUMN IF NOT EXISTS fiscal_period_id UUID;
 
 DO $$
 BEGIN
@@ -82,7 +75,8 @@ BEGIN
       REFERENCES account_master(account_code)
       DEFERRABLE INITIALLY DEFERRED;
   END IF;
-END $$;
+END
+$$;
 
 DO $$
 BEGIN
@@ -97,7 +91,8 @@ BEGIN
       REFERENCES account_master(account_code)
       DEFERRABLE INITIALLY DEFERRED;
   END IF;
-END $$;
+END
+$$;
 
 DO $$
 BEGIN
@@ -112,13 +107,5 @@ BEGIN
       REFERENCES fiscal_periods(period_id)
       DEFERRABLE INITIALLY DEFERRED;
   END IF;
-END $$;
-
-CREATE INDEX IF NOT EXISTS expense_ledger_debit_account_code_idx
-  ON expense_ledger (debit_account_code);
-
-CREATE INDEX IF NOT EXISTS expense_ledger_credit_account_code_idx
-  ON expense_ledger (credit_account_code);
-
-CREATE INDEX IF NOT EXISTS expense_ledger_fiscal_period_id_idx
-  ON expense_ledger (fiscal_period_id);
+END
+$$;

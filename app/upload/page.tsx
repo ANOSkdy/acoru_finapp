@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import Link from "next/link";
+import PageHeader from "../components/page/PageHeader";
+import StatusMessage from "../components/ui/StatusMessage";
 
 type Result = { receiptId: string; fileName: string; ok: boolean; message?: string };
 
@@ -99,11 +101,11 @@ export default function UploadPage() {
   }
 
   return (
-    <main>
-      <h2 className="page-title">領収書アップロード</h2>
-      <p className="page-subtitle">
-        スマホから撮ったレシートをまとめてアップロードできます。JPG/PNG/PDF を選択してください。
-      </p>
+    <main className="page-layout">
+      <PageHeader
+        title="領収書アップロード"
+        subtitle="スマホから撮ったレシートをまとめてアップロードできます。JPG/PNG/PDF を選択してください。"
+      />
 
       <form onSubmit={onSubmit} className="upload-card">
         <label className="upload-drop">
@@ -117,10 +119,7 @@ export default function UploadPage() {
             onChange={(e) => {
               const files = e.target.files ? Array.from(e.target.files) : [];
               const invalidFiles = files.filter(
-                (file) =>
-                  !ALLOWED_MIME_TYPES.includes(
-                    file.type as (typeof ALLOWED_MIME_TYPES)[number]
-                  )
+                (file) => !ALLOWED_MIME_TYPES.includes(file.type as (typeof ALLOWED_MIME_TYPES)[number])
               );
               if (invalidFiles.length > 0) {
                 setValidationError(
@@ -136,9 +135,7 @@ export default function UploadPage() {
           />
           <strong>ファイルを選択</strong>
           <div className="record-meta">タップして領収書を追加（複数選択可）</div>
-          {selectedNames.length > 0 ? (
-            <div className="record-meta">{selectedNames.length} 件選択済み</div>
-          ) : null}
+          {selectedNames.length > 0 ? <div className="record-meta">{selectedNames.length} 件選択済み</div> : null}
         </label>
 
         {selectedNames.length > 0 ? (
@@ -152,14 +149,11 @@ export default function UploadPage() {
         ) : (
           <div className="record-meta">まだファイルが選択されていません。</div>
         )}
-        {validationError ? <div className="status-fail">{validationError}</div> : null}
+
+        {validationError ? <StatusMessage tone="error">{validationError}</StatusMessage> : null}
 
         <div className="upload-actions">
-          <button
-            className="btn"
-            type="submit"
-            disabled={busy || selectedNames.length === 0 || Boolean(validationError)}
-          >
+          <button className="btn" type="submit" disabled={busy || selectedNames.length === 0 || Boolean(validationError)}>
             {busy ? "Uploading..." : "アップロードを開始"}
           </button>
           {results.length > 0 && !busy ? (
@@ -175,9 +169,9 @@ export default function UploadPage() {
         </div>
       </form>
 
-      <section style={{ marginTop: 20 }}>
-        <h3>アップロード結果</h3>
-        {busy ? <p className="record-meta">Uploading...</p> : null}
+      <section className="page-section">
+        <h3 className="section-title">アップロード結果</h3>
+        {busy ? <StatusMessage>Uploading...</StatusMessage> : null}
         <ul className="upload-results">
           {results.map((r) => (
             <li key={r.receiptId} className="upload-result">
@@ -188,9 +182,7 @@ export default function UploadPage() {
               {!r.ok && r.message ? <span className="record-meta">{r.message}</span> : null}
             </li>
           ))}
-          {results.length === 0 && !busy ? (
-            <li className="upload-result">まだ結果はありません。</li>
-          ) : null}
+          {results.length === 0 && !busy ? <li className="upload-result">まだ結果はありません。</li> : null}
         </ul>
       </section>
     </main>

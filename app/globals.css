@@ -169,6 +169,17 @@ button {
   font-size: 0.95rem;
 }
 
+
+.page-section {
+  margin-top: 20px;
+}
+
+.section-title {
+  margin: 4px 0;
+  font-size: 1.05rem;
+}
+
+
 .btn {
   display: inline-flex;
   align-items: center;

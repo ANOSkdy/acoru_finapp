@@ -58,53 +58,55 @@ export default function DashboardPage() {
   }
 
   return (
-    <section style={{ display: "grid", gap: 12 }}>
-      <h2>ダッシュボード</h2>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "end" }}>
-        <label>
+    <section className="page-shell">
+      <header className="page-header">
+        <h2 className="page-title">ダッシュボード</h2>
+      </header>
+      <div className="report-toolbar">
+        <label className="report-toolbar-field">
           <div className="record-meta">from</div>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <input className="record-input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         </label>
-        <label>
+        <label className="report-toolbar-field">
           <div className="record-meta">to</div>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          <input className="record-input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </label>
-        <button type="button" onClick={load} disabled={loading}>
+        <button className="btn" type="button" onClick={load} disabled={loading}>
           {loading ? "読込中..." : "読み込み"}
         </button>
       </div>
 
-      {error ? <p style={{ color: "crimson" }}>{error}</p> : null}
+      {error ? <p className="status-error">{error}</p> : null}
 
-      <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))" }}>
-        <div className="record-card">
+      <div className="kpi-grid">
+        <div className="kpi-card">
           <div className="record-meta">売上</div>
           <div>{yen(data?.kpis.revenue_total ?? 0)}</div>
         </div>
-        <div className="record-card">
+        <div className="kpi-card">
           <div className="record-meta">費用</div>
           <div>{yen(data?.kpis.expense_total ?? 0)}</div>
         </div>
-        <div className="record-card">
+        <div className="kpi-card">
           <div className="record-meta">営業利益</div>
           <div>{yen(data?.kpis.operating_profit ?? 0)}</div>
         </div>
-        <div className="record-card">
+        <div className="kpi-card">
           <div className="record-meta">現預金残高</div>
           <div>{yen(data?.kpis.cash_balance ?? 0)}</div>
         </div>
       </div>
 
-      <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))" }}>
-        <div className="record-card">
+      <div className="kpi-grid">
+        <div className="kpi-card">
           <div className="record-meta">未処理領収書</div>
           <div>{data?.queue.unprocessed_receipt_count ?? 0}</div>
         </div>
-        <div className="record-card">
+        <div className="kpi-card">
           <div className="record-meta">エラー件数</div>
           <div>{data?.queue.error_receipt_count ?? 0}</div>
         </div>
-        <div className="record-card">
+        <div className="kpi-card">
           <div className="record-meta">処理済み件数</div>
           <div>{data?.queue.processed_receipt_count ?? 0}</div>
         </div>

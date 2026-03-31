@@ -476,6 +476,98 @@ button {
   gap: 10px;
 }
 
+
+
+.page-shell {
+  display: grid;
+  gap: 12px;
+}
+
+.page-header {
+  display: grid;
+  gap: 4px;
+}
+
+.page-section {
+  display: grid;
+  gap: 12px;
+}
+
+.report-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+}
+
+.report-toolbar-field {
+  display: grid;
+  gap: 4px;
+}
+
+.report-toolbar-search {
+  min-width: 220px;
+  flex: 1 1 260px;
+}
+
+.report-grid-wrap {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.report-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.report-grid th,
+.report-grid td {
+  padding: 10px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #f1f5f9;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.report-grid th:last-child,
+.report-grid td:last-child {
+  border-right: none;
+}
+
+.report-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  font-weight: 600;
+}
+
+.report-grid tbody tr:hover td {
+  background: #f8fafc;
+}
+
+.kpi-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.kpi-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px;
+  background: #ffffff;
+  display: grid;
+  gap: 8px;
+}
+
+.status-error {
+  color: crimson;
+}
+
 @media (max-width: 899px) {
   .app-shell {
     padding: 0;

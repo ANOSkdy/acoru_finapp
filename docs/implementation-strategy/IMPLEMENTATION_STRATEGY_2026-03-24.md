@@ -22,6 +22,7 @@
 - Phase 3（PL/BS）は最小スコープで実装済み（migration 004, `GET /api/reports/pl`, `GET /api/reports/bs`, `/pl`, `/bs`）。
 - Phase 4（Dashboard, 簡易CF）は最小スコープで実装済み。
 - Phase 5 以降（複合仕訳移行、予実、部門別管理、決算運用高度化）は未実装。
+- 2026-03-31: Phase 5 の最小差分（`journals` / `journal_lines` 追加、最小 API、既存 receipt cron 互換リンク）を加算実装。
 
 ## 2. 現状サマリー
 

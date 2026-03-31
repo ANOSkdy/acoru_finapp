@@ -15,9 +15,6 @@ CREATE TABLE IF NOT EXISTS journals (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS journals_transaction_date_status_idx
-  ON journals (transaction_date, status);
-
 CREATE TABLE IF NOT EXISTS journal_lines (
   journal_line_uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   journal_uuid UUID NOT NULL REFERENCES journals(journal_uuid) ON DELETE CASCADE,
@@ -33,50 +30,17 @@ CREATE TABLE IF NOT EXISTS journal_lines (
   UNIQUE (journal_uuid, line_no)
 );
 
-CREATE INDEX IF NOT EXISTS journal_lines_journal_side_idx
-  ON journal_lines (journal_uuid, side);
+CREATE INDEX IF NOT EXISTS idx_journals_transaction_date_number
+  ON journals (transaction_date, journal_number);
 
-CREATE INDEX IF NOT EXISTS journal_lines_account_code_idx
-  ON journal_lines (account_code);
+CREATE INDEX IF NOT EXISTS idx_journal_lines_journal_uuid_line_no
+  ON journal_lines (journal_uuid, line_no);
+
+CREATE INDEX IF NOT EXISTS idx_journal_lines_account_code_side
+  ON journal_lines (account_code, side);
 
 ALTER TABLE expense_ledger
-  ADD COLUMN IF NOT EXISTS journal_uuid UUID;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'expense_ledger_journal_uuid_fkey'
-  ) THEN
-    ALTER TABLE expense_ledger
-      ADD CONSTRAINT expense_ledger_journal_uuid_fkey
-      FOREIGN KEY (journal_uuid)
-      REFERENCES journals(journal_uuid)
-      DEFERRABLE INITIALLY DEFERRED;
-  END IF;
-END $$;
-
-CREATE INDEX IF NOT EXISTS expense_ledger_journal_uuid_idx
-  ON expense_ledger (journal_uuid);
+  ADD COLUMN IF NOT EXISTS journal_uuid UUID REFERENCES journals(journal_uuid);
 
 ALTER TABLE receipt_queue
-  ADD COLUMN IF NOT EXISTS journal_uuid UUID;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'receipt_queue_journal_uuid_fkey'
-  ) THEN
-    ALTER TABLE receipt_queue
-      ADD CONSTRAINT receipt_queue_journal_uuid_fkey
-      FOREIGN KEY (journal_uuid)
-      REFERENCES journals(journal_uuid)
-      DEFERRABLE INITIALLY DEFERRED;
-  END IF;
-END $$;
-
-CREATE INDEX IF NOT EXISTS receipt_queue_journal_uuid_idx
-  ON receipt_queue (journal_uuid);
+  ADD COLUMN IF NOT EXISTS journal_uuid UUID REFERENCES journals(journal_uuid);

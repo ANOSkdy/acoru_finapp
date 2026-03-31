@@ -30,6 +30,7 @@
   - Phase 4 の簡易CF画面。期間/検索で `GET /api/reports/cf` を呼ぶ。
 - `app/api/**`
   - ledger CRUD、blob upload、receipt register、cron 処理。
+  - Phase 5: journals API（`/api/journals`, `/api/journals/[journalUuid]`）。
 - `lib/env.ts`
   - 環境変数を Zod で検証して export。
 - `lib/db.ts`

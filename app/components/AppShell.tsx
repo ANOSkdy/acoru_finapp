@@ -11,6 +11,7 @@ const navItems = [
   { href: "/bs", label: "BS", sub: "貸借対照表" },
   { href: "/cf", label: "CF", sub: "簡易CF" },
   { href: "/upload", label: "Upload", sub: "領収書" },
+  { href: "/journals", label: "Journals", sub: "複合仕訳" },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {

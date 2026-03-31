@@ -36,15 +36,17 @@ export default function JournalsPage() {
   }, []);
 
   return (
-    <main>
-      <h2 className="page-title">Journals</h2>
-      <p className="page-subtitle">複合仕訳モデル（Phase 5）確認用の最小一覧です。</p>
+    <section className="page-shell">
+      <header className="page-header">
+        <h2 className="page-title">Journals</h2>
+        <p className="page-subtitle">複合仕訳モデル（Phase 5）確認用の最小一覧です。</p>
+      </header>
 
       {loading ? <p className="record-meta">Loading...</p> : null}
-      {error ? <p style={{ color: "crimson" }}>Error: {error}</p> : null}
+      {error ? <p className="status-error">Error: {error}</p> : null}
 
-      <div className="table-wrap">
-        <table className="ledger-table">
+      <div className="report-grid-wrap">
+        <table className="report-grid" style={{ minWidth: 760 }}>
           <thead>
             <tr>
               <th>No</th>
@@ -80,6 +82,6 @@ export default function JournalsPage() {
           </tbody>
         </table>
       </div>
-    </main>
+    </section>
   );
 }

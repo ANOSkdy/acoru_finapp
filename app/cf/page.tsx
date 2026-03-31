@@ -60,27 +60,29 @@ export default function CFPage() {
   }
 
   return (
-    <section style={{ display: "grid", gap: 12 }}>
-      <h2>簡易キャッシュフロー</h2>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "end" }}>
-        <label>
+    <section className="page-shell">
+      <header className="page-header">
+        <h2 className="page-title">簡易キャッシュフロー</h2>
+      </header>
+      <div className="report-toolbar">
+        <label className="report-toolbar-field">
           <div className="record-meta">from</div>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <input className="record-input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         </label>
-        <label>
+        <label className="report-toolbar-field">
           <div className="record-meta">to</div>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          <input className="record-input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </label>
-        <label style={{ minWidth: 220 }}>
+        <label className="report-toolbar-field report-toolbar-search">
           <div className="record-meta">検索</div>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="区分/科目コード/科目名" style={{ width: "100%" }} />
+          <input className="record-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="区分/科目コード/科目名" />
         </label>
-        <button type="button" onClick={load} disabled={loading}>
+        <button className="btn" type="button" onClick={load} disabled={loading}>
           {loading ? "読込中..." : "読み込み"}
         </button>
       </div>
 
-      {error ? <p style={{ color: "crimson" }}>{error}</p> : null}
+      {error ? <p className="status-error">{error}</p> : null}
 
       {summary ? (
         <div className="record-meta">
@@ -88,8 +90,8 @@ export default function CFPage() {
         </div>
       ) : null}
 
-      <div style={{ overflowX: "auto" }}>
-        <table className="record-table" style={{ minWidth: 760 }}>
+      <div className="report-grid-wrap">
+        <table className="report-grid" style={{ minWidth: 760 }}>
           <thead>
             <tr>
               <th>区分</th>

@@ -40,6 +40,8 @@
 - `/recordedit` : `/recordlists` へリダイレクト
 - `/recordedit/[journalId]` : 単票編集・削除
 - `/trial-balance` : 試算表の期間集計表示（Phase 2）
+- `/pl` : 損益計算書（Phase 3）
+- `/bs` : 貸借対照表（Phase 3）
 - `/upload` : 複数ファイルアップロードと結果表示
 
 ## 5. API 概要
@@ -54,6 +56,8 @@
 - `DELETE /api/ledger/[journalId]` : 仕訳単票削除
 - `GET /api/cron/process-receipts` : キュー処理（認証付き）
 - `GET /api/reports/trial-balance` : 期間指定で試算表を取得（Phase 2）
+- `GET /api/reports/pl` : 期間指定で損益計算書を取得（Phase 3）
+- `GET /api/reports/bs` : 期末日指定で貸借対照表を取得（Phase 3）
 
 ## 6. データモデル概要
 
@@ -75,6 +79,8 @@
   - Phase 2 で追加された試算表スナップショット基盤（現時点は保存処理未実装）
 - `ledger_account_mapping_audit`
   - Phase 2 で追加された科目マッピング監査ログ基盤
+- `financial_statement_lines` / `account_fs_mappings` / `financial_statement_snapshots`
+  - Phase 3 で追加された PL/BS（将来 CF を含む）帳票定義・科目マッピング・スナップショット基盤
 
 ## 7. 環境変数
 
@@ -110,7 +116,8 @@
 
 - 現行実装では、証憑アップロード・AI 解析・経費台帳 CRUD までが実装済み。
 - 現行実装では、単一テーブル中心の台帳運用を継続しつつ、Phase 2 で試算表 API/画面を追加済み。
-- PL / BS、本格 Dashboard、複合仕訳移行は未実装（提案フェーズのまま）。
+- 現行実装では、Phase 3 として PL/BS API と画面を追加済み。
+- CF API、本格 Dashboard、複合仕訳移行は未実装（提案フェーズのまま）。
 
 ### 10.2 将来の拡張案
 

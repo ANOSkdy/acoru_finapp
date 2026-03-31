@@ -20,6 +20,10 @@
   - 複数ファイル選択、Blob アップロード、受付登録。
 - `app/trial-balance/page.tsx`
   - Phase 2 の試算表画面。期間/科目検索で `GET /api/reports/trial-balance` を呼ぶ。
+- `app/pl/page.tsx`
+  - Phase 3 の損益計算書画面。期間/検索で `GET /api/reports/pl` を呼ぶ。
+- `app/bs/page.tsx`
+  - Phase 3 の貸借対照表画面。期末日/検索で `GET /api/reports/bs` を呼ぶ。
 - `app/api/**`
   - ledger CRUD、blob upload、receipt register、cron 処理。
 - `lib/env.ts`
@@ -116,6 +120,20 @@
 - 科目未解決でも `mapping_status = unmapped` として行を返却。
 - `normal_balance` を使って残高方向/金額を算出し、安定順序で返却。
 
+### 3.11 `GET /api/reports/pl`
+
+- `from` / `to`（YYYY-MM-DD）を必須検証、`q` を任意検証。
+- `expense_ledger` を借方/貸方展開し、`account_master.account_type IN ('revenue','expense')` に限定して集計。
+- `debit_account_code` / `credit_account_code` を優先し、未設定時は `account_master.account_name` でフォールバック照合。
+- `account_fs_mappings` / `financial_statement_lines` があれば行コードで返却し、無い場合も科目単位で返却。
+
+### 3.12 `GET /api/reports/bs`
+
+- `from` / `to`（YYYY-MM-DD）を必須検証、`q` を任意検証。
+- `expense_ledger.transaction_date <= to` で残高集計し、`account_master.account_type IN ('asset','liability','equity')` に限定。
+- 科目コード優先・科目名フォールバックで科目解決。
+- `account_fs_mappings` / `financial_statement_lines` が未設定でも、科目区分ベースで集計結果を返却。
+
 ## 4. ライブラリ責務
 
 - `lib/env.ts`: server-only 前提の環境変数の正規化。
@@ -148,7 +166,7 @@
 - `locked_by`
 - `locked_at`
 
-### 5.3 `expense_ledger`（inferred-from-code）
+### 5.3 `expense_ledger`（migration 確認済み）
 
 現行コードから参照される列（inferred-from-code）:
 - `journal_id`
@@ -160,8 +178,10 @@
 - `gemini_response`
 - `created_at`, `processed_at`
 
-注記:
-- 正式DDLは本リポジトリ上で未確認。
+Phase 3 追加テーブル:
+- `financial_statement_lines`
+- `account_fs_mappings`
+- `financial_statement_snapshots`
 
 ## 6. エラー処理
 
@@ -180,8 +200,7 @@
 
 > 以下はすべて拡張案としての proposed であり、現行実装には未実装。
 
-- `account_master` を導入し、科目体系と集計属性を明示管理する。
-- `reporting_periods`（fiscal periods）を導入し、月次・年度締めの境界を明確化する。
-- 将来レポート API として `trial-balance` / `pl` / `bs` 系を分離設計する。
-- dashboard 候補として、KPI サマリ、月次推移、キュー処理状況を整理する。
-- 将来 migration ターゲットとして `journals` / `journal_lines` へ移行し、複合仕訳を扱える構造へ拡張する。
+- `account_master` / `fiscal_periods` は実装済み。
+- `trial-balance` / `pl` / `bs` レポート API は実装済み。
+- dashboard 候補として、KPI サマリ、月次推移、キュー処理状況を整理する（未実装）。
+- 将来 migration ターゲットとして `journals` / `journal_lines` へ移行し、複合仕訳を扱える構造へ拡張する（未実装）。

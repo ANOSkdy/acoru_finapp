@@ -31,6 +31,16 @@
 - `app/api/**`
   - ledger CRUD、blob upload、receipt register、cron 処理。
   - Phase 5: journals API（`/api/journals`, `/api/journals/[journalUuid]`）。
+  - Phase 6: departments/projects/budgets/closing-runs と予実 API。
+- `app/departments/page.tsx`
+  - Phase 6 の部門マスタ画面。
+- `app/projects/page.tsx`
+  - Phase 6 のプロジェクトマスタ画面。
+- `app/budgets/page.tsx`
+  - Phase 6 の予算登録・予実表示画面。
+- `app/closing-runs/page.tsx`
+  - Phase 6 の締め処理ログ画面。
+
 - `lib/env.ts`
   - 環境変数を Zod で検証して export。
 - `lib/db.ts`
@@ -225,4 +235,5 @@ Phase 3 追加テーブル:
 - `trial-balance` / `pl` / `bs` レポート API は実装済み。
 - dashboard（KPI/キュー集計）と簡易CF（`cf_category` 集計）は Phase 4 として実装済み。
 - 将来 migration ターゲットとして `journals` / `journal_lines` へ移行し、複合仕訳を扱える構造へ拡張する（未実装）。
-- 予実・部門別管理・決算運用高度化は未実装。
+- 予実・部門別管理・決算運用は Phase 6 最小スコープで実装済み（マスタ、予算、差異取得、締め処理ログ、監査ログ基盤）。
+- auth/承認ワークフローの高度化は未実装。

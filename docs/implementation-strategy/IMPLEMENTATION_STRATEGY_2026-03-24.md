@@ -21,8 +21,9 @@
 - Phase 2（試算表）は最小スコープで実装済み（migration 003, `GET /api/reports/trial-balance`, `/trial-balance`）。
 - Phase 3（PL/BS）は最小スコープで実装済み（migration 004, `GET /api/reports/pl`, `GET /api/reports/bs`, `/pl`, `/bs`）。
 - Phase 4（Dashboard, 簡易CF）は最小スコープで実装済み。
-- Phase 5 以降（複合仕訳移行、予実、部門別管理、決算運用高度化）は未実装。
 - 2026-03-31: Phase 5 の最小差分（`journals` / `journal_lines` 追加、最小 API、既存 receipt cron 互換リンク）を加算実装。
+- 2026-03-31: Phase 6 の最小差分（`departments` / `projects` / `budgets` / `closing_runs` / `audit_logs`、関連 API/画面）を加算実装。
+- auth/承認ワークフローの高度化は継続課題。
 
 ## 2. 現状サマリー
 
@@ -127,7 +128,7 @@
 - このフェーズでやらないこと
   - 決算運用のフル機能化。
 
-### Phase 6: 決算運用 / 予実 / 管理会計
+### Phase 6: 決算運用 / 予実 / 管理会計（最小実装済み）
 
 - 目的
   - 月次決算運用、予実比較、管理会計の運用機能を整備する。

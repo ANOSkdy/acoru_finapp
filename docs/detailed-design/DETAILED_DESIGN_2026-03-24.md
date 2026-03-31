@@ -24,6 +24,10 @@
   - Phase 3 の損益計算書画面。期間/検索で `GET /api/reports/pl` を呼ぶ。
 - `app/bs/page.tsx`
   - Phase 3 の貸借対照表画面。期末日/検索で `GET /api/reports/bs` を呼ぶ。
+- `app/dashboard/page.tsx`
+  - Phase 4 のダッシュボード画面。期間指定で `GET /api/dashboard/summary` を呼ぶ。
+- `app/cf/page.tsx`
+  - Phase 4 の簡易CF画面。期間/検索で `GET /api/reports/cf` を呼ぶ。
 - `app/api/**`
   - ledger CRUD、blob upload、receipt register、cron 処理。
 - `lib/env.ts`
@@ -134,6 +138,22 @@
 - 科目コード優先・科目名フォールバックで科目解決。
 - `account_fs_mappings` / `financial_statement_lines` が未設定でも、科目区分ベースで集計結果を返却。
 
+
+
+### 3.13 `GET /api/dashboard/summary`
+
+- `from` / `to`（YYYY-MM-DD）を必須検証。
+- 売上・費用を `account_master.account_type` ベースで集計し、営業利益を算出。
+- 現預金残高は `asset` 科目 + `cf_category` / 科目名（現金/預金/cash/bank）フォールバックで算出。
+- `receipt_queue` の `UNPROCESSED` / `ERROR` / `PROCESSED` 件数を返却。
+
+### 3.14 `GET /api/reports/cf`
+
+- `from` / `to`（YYYY-MM-DD）を必須検証、`q` を任意検証。
+- `expense_ledger` を借方/貸方展開し、`debit_account_code` / `credit_account_code` 優先で科目解決。
+- コード未設定時は `account_master.account_name` 一致でフォールバック。
+- `account_master.cf_category` を `operating/investing/financing/none` に正規化して簡易CFとして返却。
+
 ## 4. ライブラリ責務
 
 - `lib/env.ts`: server-only 前提の環境変数の正規化。
@@ -202,5 +222,6 @@ Phase 3 追加テーブル:
 
 - `account_master` / `fiscal_periods` は実装済み。
 - `trial-balance` / `pl` / `bs` レポート API は実装済み。
-- dashboard 候補として、KPI サマリ、月次推移、キュー処理状況を整理する（未実装）。
+- dashboard（KPI/キュー集計）と簡易CF（`cf_category` 集計）は Phase 4 として実装済み。
 - 将来 migration ターゲットとして `journals` / `journal_lines` へ移行し、複合仕訳を扱える構造へ拡張する（未実装）。
+- 予実・部門別管理・決算運用高度化は未実装。

@@ -20,7 +20,8 @@
 - Phase 1（会計基盤整備）は実装済み。
 - Phase 2（試算表）は最小スコープで実装済み（migration 003, `GET /api/reports/trial-balance`, `/trial-balance`）。
 - Phase 3（PL/BS）は最小スコープで実装済み（migration 004, `GET /api/reports/pl`, `GET /api/reports/bs`, `/pl`, `/bs`）。
-- Phase 4 以降（Dashboard, 簡易CF, 複合仕訳移行）は未実装。
+- Phase 4（Dashboard, 簡易CF）は最小スコープで実装済み。
+- Phase 5 以降（複合仕訳移行、予実、部門別管理、決算運用高度化）は未実装。
 
 ## 2. 現状サマリー
 
@@ -98,22 +99,15 @@
 - このフェーズでやらないこと
   - CF API、高度分析、予実管理。
 
-### Phase 4: Dashboard / KPI / 簡易CF
+### Phase 4: Dashboard / KPI / 簡易CF（実装済み）
 
-- 目的
-  - 財務状況と業務処理状況を統合可視化する。
-- このフェーズを行う理由
-  - PL/BS が揃うと KPI の意味づけが安定するため。
-- 主な対象
-  - ダッシュボード画面、KPI 集約 API、簡易 CF 表示。
-- 想定成果物
-  - KPI 定義、ダッシュボード情報設計、サマリ API。
-- 影響範囲
-  - フロント UI、集計 API、キャッシュ戦略。
-- リスク / 未解決事項
-  - 更新頻度とリアルタイム性要件の調整。
-- このフェーズでやらないこと
-  - 複合仕訳への構造移行。
+- 実装内容
+  - migration 005（`dashboard_kpi_snapshots`, `dashboard_events`, `account_master.cf_category`）。
+  - `GET /api/dashboard/summary`、`GET /api/reports/cf`。
+  - `/dashboard`、`/cf` 画面。
+- 継続事項
+  - スナップショット保存は未実装（ライブ集計のみ）。
+  - 複合仕訳への構造移行は本フェーズ非対象。
 
 ### Phase 5: 複合仕訳モデル移行
 

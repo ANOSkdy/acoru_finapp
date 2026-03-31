@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/recordlists", label: "Record List", sub: "台帳一覧" },
+  { href: "/trial-balance", label: "Trial Balance", sub: "試算表" },
   { href: "/upload", label: "Upload", sub: "領収書" },
 ];
 

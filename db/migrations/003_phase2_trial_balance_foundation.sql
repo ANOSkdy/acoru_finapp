@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE IF NOT EXISTS trial_balance_snapshots (
   snapshot_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   fiscal_period_id UUID NOT NULL REFERENCES fiscal_periods(period_id),
@@ -12,25 +14,19 @@ CREATE TABLE IF NOT EXISTS trial_balance_snapshots (
   UNIQUE (fiscal_period_id, account_code)
 );
 
-CREATE INDEX IF NOT EXISTS trial_balance_snapshots_period_generated_idx
-  ON trial_balance_snapshots (fiscal_period_id, generated_at DESC);
-
-CREATE INDEX IF NOT EXISTS trial_balance_snapshots_account_idx
-  ON trial_balance_snapshots (account_code);
+CREATE INDEX IF NOT EXISTS trial_balance_snapshots_period_account_idx
+  ON trial_balance_snapshots (fiscal_period_id, account_code);
 
 CREATE TABLE IF NOT EXISTS ledger_account_mapping_audit (
   mapping_audit_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   journal_id BIGINT NOT NULL REFERENCES expense_ledger(journal_id) ON DELETE CASCADE,
-  side TEXT NOT NULL CHECK (side IN ('debit','credit')),
+  side TEXT NOT NULL CHECK (side IN ('debit', 'credit')),
   raw_account_name TEXT NOT NULL,
   mapped_account_code TEXT REFERENCES account_master(account_code),
-  mapping_status TEXT NOT NULL CHECK (mapping_status IN ('mapped','unmapped','manual_override')),
+  mapping_status TEXT NOT NULL CHECK (mapping_status IN ('mapped', 'unmapped', 'manual_override')),
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS ledger_account_mapping_audit_journal_side_idx
   ON ledger_account_mapping_audit (journal_id, side);
-
-CREATE INDEX IF NOT EXISTS ledger_account_mapping_audit_status_created_idx
-  ON ledger_account_mapping_audit (mapping_status, created_at DESC);

@@ -1,6 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import DataGridShell from "../components/grid/DataGridShell";
+import GridEmptyState from "../components/grid/GridEmptyState";
+import GridToolbar from "../components/grid/GridToolbar";
+import PageHeader from "../components/page/PageHeader";
+import StatusMessage from "../components/ui/StatusMessage";
 
 type TrialBalanceRow = {
   account_code: string | null;
@@ -71,39 +76,36 @@ export default function TrialBalancePage() {
   }
 
   return (
-    <section style={{ display: "grid", gap: 12 }}>
-      <h2>試算表</h2>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "end" }}>
-        <label>
-          <div className="record-meta">from</div>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-        </label>
-        <label>
-          <div className="record-meta">to</div>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-        </label>
-        <label style={{ minWidth: 220 }}>
-          <div className="record-meta">科目検索</div>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="科目コード/科目名"
-            style={{ width: "100%" }}
-          />
-        </label>
-        <button type="button" onClick={load} disabled={loading}>
-          {loading ? "読込中..." : "読み込み"}
-        </button>
-      </div>
+    <section className="page-layout">
+      <PageHeader title="試算表" subtitle="期間指定で試算表を読み込みます。" />
 
-      {error ? <p style={{ color: "crimson" }}>{error}</p> : null}
+      <GridToolbar>
+        <div className="record-controls">
+          <label>
+            <div className="record-meta">from</div>
+            <input className="record-input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          </label>
+          <label>
+            <div className="record-meta">to</div>
+            <input className="record-input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          </label>
+          <label>
+            <div className="record-meta">科目検索</div>
+            <input className="record-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="科目コード/科目名" />
+          </label>
+          <button className="btn" type="button" onClick={load} disabled={loading}>
+            {loading ? "読込中..." : "読み込み"}
+          </button>
+        </div>
+      </GridToolbar>
 
-      <div className="record-meta">
+      {error ? <StatusMessage tone="error">{error}</StatusMessage> : null}
+      <StatusMessage>
         借方合計: {total.debit.toLocaleString("ja-JP")} / 貸方合計: {total.credit.toLocaleString("ja-JP")}
-      </div>
+      </StatusMessage>
 
-      <div style={{ overflowX: "auto" }}>
-        <table className="record-table" style={{ minWidth: 820 }}>
+      <DataGridShell minWidth={820}>
+        <table className="report-grid">
           <thead>
             <tr>
               <th>科目コード</th>
@@ -116,28 +118,21 @@ export default function TrialBalancePage() {
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="record-meta">
-                  データがありません。期間を指定して読み込みしてください。
-                </td>
+            {rows.map((row) => (
+              <tr key={`${row.account_code ?? "unmapped"}:${row.account_name}`}>
+                <td>{row.account_code ?? "-"}</td>
+                <td>{row.account_name}</td>
+                <td>{Number(row.period_debit ?? 0).toLocaleString("ja-JP")}</td>
+                <td>{Number(row.period_credit ?? 0).toLocaleString("ja-JP")}</td>
+                <td>{row.balance_side === "debit" ? "借方" : "貸方"}</td>
+                <td>{Number(row.balance_amount ?? 0).toLocaleString("ja-JP")}</td>
+                <td>{row.mapping_status}</td>
               </tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={`${row.account_code ?? "unmapped"}:${row.account_name}`}>
-                  <td>{row.account_code ?? "-"}</td>
-                  <td>{row.account_name}</td>
-                  <td>{Number(row.period_debit ?? 0).toLocaleString("ja-JP")}</td>
-                  <td>{Number(row.period_credit ?? 0).toLocaleString("ja-JP")}</td>
-                  <td>{row.balance_side === "debit" ? "借方" : "貸方"}</td>
-                  <td>{Number(row.balance_amount ?? 0).toLocaleString("ja-JP")}</td>
-                  <td>{row.mapping_status}</td>
-                </tr>
-              ))
-            )}
+            ))}
           </tbody>
         </table>
-      </div>
+      </DataGridShell>
+      {rows.length === 0 ? <GridEmptyState message="データがありません。期間を指定して読み込みしてください。" /> : null}
     </section>
   );
 }

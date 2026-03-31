@@ -139,6 +139,25 @@ button {
   font-weight: 600;
 }
 
+.page-layout {
+  display: grid;
+  gap: 12px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.page-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .page-title {
   font-size: 1.4rem;
   margin: 0 0 8px;
@@ -356,7 +375,17 @@ button {
 }
 
 .record-table {
-  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.data-grid-shell {
+  width: 100%;
+}
+
+.data-grid-inner {
+  width: 100%;
 }
 
 .record-table-wrap {
@@ -451,6 +480,46 @@ button {
 .record-cell-value {
   display: inline-block;
   min-height: 20px;
+}
+
+
+.grid-empty-state {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 12px;
+  color: #6b7280;
+}
+
+.report-grid {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.report-grid th,
+.report-grid td,
+.record-table th,
+.record-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.report-grid thead th,
+.record-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  font-weight: 600;
+}
+
+.report-grid tbody tr:hover td,
+.record-table tbody tr:hover td {
+  background: #f8fafc;
 }
 
 .record-modal-overlay {

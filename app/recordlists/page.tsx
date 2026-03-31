@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import DataGridShell from "../components/grid/DataGridShell";
+import GridEmptyState from "../components/grid/GridEmptyState";
+import GridToolbar from "../components/grid/GridToolbar";
+import PageHeader from "../components/page/PageHeader";
+import StatusMessage from "../components/ui/StatusMessage";
 
 type LedgerRow = {
   journal_id: string;
@@ -339,11 +344,10 @@ export default function RecordListsPage() {
   }, [queryString]);
 
   return (
-    <main>
-      <h2 className="page-title">Record Lists</h2>
-      <p className="page-subtitle">仕訳を一覧で確認し、セルをダブルクリックして編集します。</p>
+    <main className="page-layout">
+      <PageHeader title="Record Lists" subtitle="仕訳を一覧で確認し、セルをダブルクリックして編集します。" />
 
-      <div className="record-toolbar">
+      <GridToolbar>
         <section className="record-controls record-controls-desktop">
           <button
             className="btn"
@@ -389,13 +393,13 @@ export default function RecordListsPage() {
             </button>
           </div>
         </section>
-      </div>
+      </GridToolbar>
 
-      {err ? <p style={{ color: "crimson" }}>Error: {err}</p> : null}
-      {status ? <p className="status-success">{status}</p> : null}
-      {loading ? <p className="record-meta">Loading...</p> : null}
+      {err ? <StatusMessage tone="error">Error: {err}</StatusMessage> : null}
+      {status ? <StatusMessage tone="success">{status}</StatusMessage> : null}
+      {loading ? <StatusMessage>Loading...</StatusMessage> : null}
 
-      <div className="record-table-wrap">
+      <DataGridShell minWidth={1080}>
         <table className="record-grid" aria-label="仕訳一覧">
           <thead>
             <tr>
@@ -605,9 +609,9 @@ export default function RecordListsPage() {
             ))}
           </tbody>
         </table>
-      </div>
-      {rows.length === 0 ? <div className="record-card">レコードがありません</div> : null}
-      {createErr ? <p className="status-fail">Error: {createErr}</p> : null}
+      </DataGridShell>
+      {rows.length === 0 ? <GridEmptyState message="レコードがありません" /> : null}
+      {createErr ? <StatusMessage tone="error">Error: {createErr}</StatusMessage> : null}
     </main>
   );
 }

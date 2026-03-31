@@ -8,7 +8,7 @@
 
 現行実装では、領収書ファイルをアップロードし、キュー登録後に Cron 経由で Gemini 解析を行い、`expense_ledger` へ仕訳データを登録する構成になっている。
 
-- フロントエンド: Next.js App Router（`/recordlists`, `/recordedit/[journalId]`, `/upload`）
+- フロントエンド: Next.js App Router（`/recordlists`, `/recordedit/[journalId]`, `/trial-balance`, `/upload`）
 - API: Next.js Route Handler（`runtime = "nodejs"`）
 - DB: Neon Postgres（`DATABASE_URL` をサーバー側で参照）
 - Blob: Vercel Blob
@@ -39,6 +39,7 @@
 - `/recordlists` : 仕訳一覧、検索、並び替え、インライン編集、新規作成、複数削除
 - `/recordedit` : `/recordlists` へリダイレクト
 - `/recordedit/[journalId]` : 単票編集・削除
+- `/trial-balance` : 試算表の期間集計表示（Phase 2）
 - `/upload` : 複数ファイルアップロードと結果表示
 
 ## 5. API 概要
@@ -52,6 +53,7 @@
 - `PATCH /api/ledger/[journalId]` : 仕訳部分更新
 - `DELETE /api/ledger/[journalId]` : 仕訳単票削除
 - `GET /api/cron/process-receipts` : キュー処理（認証付き）
+- `GET /api/reports/trial-balance` : 期間指定で試算表を取得（Phase 2）
 
 ## 6. データモデル概要
 
@@ -66,8 +68,13 @@
 
 - `expense_ledger`
   - 現行実装で CRUD と解析結果登録の対象
-  - 正式DDLは本リポジトリ上で未確認
-  - 列情報は inferred-from-code としてのみ把握可能
+  - Phase 1 で勘定科目コード/会計期間への参照列を追加済み
+- `account_master` / `fiscal_periods`
+  - Phase 1 の会計基盤テーブル
+- `trial_balance_snapshots`
+  - Phase 2 で追加された試算表スナップショット基盤（現時点は保存処理未実装）
+- `ledger_account_mapping_audit`
+  - Phase 2 で追加された科目マッピング監査ログ基盤
 
 ## 7. 環境変数
 
@@ -102,7 +109,8 @@
 ### 10.1 現行実装
 
 - 現行実装では、証憑アップロード・AI 解析・経費台帳 CRUD までが実装済み。
-- 現行実装では、単一テーブル中心の台帳運用であり、財務三表や KPI 可視化の専用データ基盤は未実装。
+- 現行実装では、単一テーブル中心の台帳運用を継続しつつ、Phase 2 で試算表 API/画面を追加済み。
+- PL / BS、本格 Dashboard、複合仕訳移行は未実装（提案フェーズのまま）。
 
 ### 10.2 将来の拡張案
 

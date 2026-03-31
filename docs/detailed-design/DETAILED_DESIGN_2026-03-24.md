@@ -18,6 +18,8 @@
   - 単票編集と削除。
 - `app/upload/page.tsx`
   - 複数ファイル選択、Blob アップロード、受付登録。
+- `app/trial-balance/page.tsx`
+  - Phase 2 の試算表画面。期間/科目検索で `GET /api/reports/trial-balance` を呼ぶ。
 - `app/api/**`
   - ledger CRUD、blob upload、receipt register、cron 処理。
 - `lib/env.ts`
@@ -105,6 +107,14 @@
 - `expense_ledger` へ INSERT 後、`markProcessed`。
 - 失敗時は `markError`。
 - 最後に `releaseCronLock`。
+
+### 3.10 `GET /api/reports/trial-balance`
+
+- `from` / `to`（YYYY-MM-DD）を必須検証、`q` を任意検証。
+- `expense_ledger` の借方/貸方を UNION 集計して当期借方/当期貸方を算出。
+- `debit_account_code` / `credit_account_code` を優先し、未設定時は `account_master.account_name` でフォールバック照合。
+- 科目未解決でも `mapping_status = unmapped` として行を返却。
+- `normal_balance` を使って残高方向/金額を算出し、安定順序で返却。
 
 ## 4. ライブラリ責務
 

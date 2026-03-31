@@ -19,7 +19,8 @@
 追記（2026-03-30）:
 - Phase 1（会計基盤整備）は実装済み。
 - Phase 2（試算表）は最小スコープで実装済み（migration 003, `GET /api/reports/trial-balance`, `/trial-balance`）。
-- Phase 3 以降（PL/BS, Dashboard, 複合仕訳移行）は未実装。
+- Phase 3（PL/BS）は最小スコープで実装済み（migration 004, `GET /api/reports/pl`, `GET /api/reports/bs`, `/pl`, `/bs`）。
+- Phase 4 以降（Dashboard, 簡易CF, 複合仕訳移行）は未実装。
 
 ## 2. 現状サマリー
 
@@ -39,7 +40,7 @@
 
 1. Phase 1: 会計基盤整備
 2. Phase 2: 試算表
-3. Phase 3: PL / BS
+3. Phase 3: PL / BS（実装済み）
 4. Phase 4: Dashboard / KPI / 簡易CF
 5. Phase 5: 複合仕訳モデル移行
 6. Phase 6: 決算運用 / 予実 / 管理会計
@@ -80,22 +81,22 @@
 - このフェーズでやらないこと
   - PL/BS 完成、KPI 可視化。
 
-### Phase 3: PL / BS
+### Phase 3: PL / BS（実装済み）
 
 - 目的
   - 試算表を基に PL / BS を算出・表示する。
 - このフェーズを行う理由
   - 財務把握の中心指標を整備し、次フェーズの KPI に接続するため。
 - 主な対象
-  - 科目マッピング、PL/BS API、期間比較仕様。
+  - 科目マッピング、PL/BS API、最小表示画面。
 - 想定成果物
-  - PL API、BS API、帳票定義。
+  - migration 004、PL API、BS API、`/pl` `/bs` 画面。
 - 影響範囲
   - API 追加、UI 追加、会計定義ドキュメント。
 - リスク / 未解決事項
   - 表示科目マッピング方針の合意が必要。
 - このフェーズでやらないこと
-  - 高度分析、予実管理。
+  - CF API、高度分析、予実管理。
 
 ### Phase 4: Dashboard / KPI / 簡易CF
 

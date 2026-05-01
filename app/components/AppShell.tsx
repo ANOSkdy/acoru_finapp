@@ -6,23 +6,12 @@ import { useState } from "react";
 
 const navItems = [
   { href: "/recordlists", label: "Record List", sub: "台帳一覧" },
-  { href: "/dashboard", label: "Dashboard", sub: "ダッシュボード" },
-  { href: "/trial-balance", label: "Trial Balance", sub: "試算表" },
-  { href: "/pl", label: "PL", sub: "損益計算書" },
-  { href: "/bs", label: "BS", sub: "貸借対照表" },
-  { href: "/cf", label: "CF", sub: "簡易CF" },
   { href: "/upload", label: "Upload", sub: "領収書" },
-  { href: "/journals", label: "Journals", sub: "複合仕訳" },
-  { href: "/departments", label: "Departments", sub: "部門マスタ" },
-  { href: "/projects", label: "Projects", sub: "プロジェクト" },
-  { href: "/budgets", label: "Budgets", sub: "予算管理" },
-  { href: "/closing-runs", label: "Closing Runs", sub: "締め処理ログ" },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-
 
   return (
     <div className="app-shell">

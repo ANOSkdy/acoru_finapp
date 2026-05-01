@@ -13,94 +13,6 @@ function errorMessage(e: unknown): string {
   return String(e);
 }
 
-
-async function resolveAccountCode(client: import("@neondatabase/serverless").PoolClient, accountName: string) {
-  const byName = await client.query<{ account_code: string }>(
-    `SELECT account_code FROM account_master WHERE account_name = $1 LIMIT 1;`,
-    [accountName]
-  );
-  return byName.rows[0]?.account_code ?? null;
-}
-
-async function tryCreateLinkedJournal(
-  client: import("@neondatabase/serverless").PoolClient,
-  input: {
-    transactionDate: string;
-    description: string;
-    memo: string;
-    sourceReceiptId: string;
-    sourceFileName: string;
-    sourceMimeType: string;
-    debitAccountName: string;
-    debitVendor: string;
-    debitAmount: number;
-    debitTax: number;
-    debitInvoiceCategory: string;
-    creditAccountName: string;
-    creditAmount: number;
-    creditTax: number;
-    creditInvoiceCategory: string;
-  }
-): Promise<string | null> {
-  try {
-    const debitCode = await resolveAccountCode(client, input.debitAccountName);
-    const creditCode = await resolveAccountCode(client, input.creditAccountName);
-    if (!debitCode || !creditCode) return null;
-
-    const journalRes = await client.query<{ journal_uuid: string }>(
-      `INSERT INTO journals (
-        transaction_date,
-        description,
-        memo,
-        source_type,
-        source_receipt_id,
-        source_file_name,
-        source_mime_type,
-        status
-      ) VALUES ($1, $2, $3, 'receipt_ai', $4, $5, $6, 'posted')
-      RETURNING journal_uuid;`,
-      [
-        input.transactionDate,
-        input.description,
-        input.memo,
-        input.sourceReceiptId,
-        input.sourceFileName,
-        input.sourceMimeType,
-      ]
-    );
-
-    const journalUuid = journalRes.rows[0]?.journal_uuid;
-    if (!journalUuid) return null;
-
-    await client.query(
-      `INSERT INTO journal_lines (
-        journal_uuid, line_no, side, account_code, vendor_name, amount, tax_amount, invoice_category, line_description
-      ) VALUES
-        ($1, 1, 'debit', $2, $3, $4, $5, $6, $7),
-        ($1, 2, 'credit', $8, NULL, $9, $10, $11, $12);`,
-      [
-        journalUuid,
-        debitCode,
-        input.debitVendor,
-        input.debitAmount,
-        input.debitTax,
-        input.debitInvoiceCategory,
-        input.description,
-        creditCode,
-        input.creditAmount,
-        input.creditTax,
-        input.creditInvoiceCategory,
-        input.description,
-      ]
-    );
-
-    return journalUuid;
-  } catch (e: unknown) {
-    console.warn("linked journal creation skipped", errorMessage(e));
-    return null;
-  }
-}
-
 async function fetchAsBuffer(url: string): Promise<Buffer> {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`Blob fetch failed: ${r.status} ${r.statusText}`);
@@ -177,35 +89,6 @@ export async function GET(req: Request) {
           );
 
           const journalId = insert.rows[0].journal_id;
-
-          const linkedJournalUuid = await tryCreateLinkedJournal(client, {
-            transactionDate: extracted.transaction_date,
-            description: extracted.description || "",
-            memo: extracted.memo || "",
-            sourceReceiptId: t.receipt_id,
-            sourceFileName: t.file_name,
-            sourceMimeType: t.mime_type,
-            debitAccountName: extracted.suggested_debit_account || "雑費",
-            debitVendor: extracted.store_name || "",
-            debitAmount: extracted.total_amount || 0,
-            debitTax: extracted.tax_amount || 0,
-            debitInvoiceCategory: extracted.invoice_category || "区分記載",
-            creditAccountName: env.DEFAULT_CREDIT_ACCOUNT,
-            creditAmount: extracted.total_amount || 0,
-            creditTax: extracted.tax_amount || 0,
-            creditInvoiceCategory: extracted.invoice_category || "区分記載",
-          });
-
-          if (linkedJournalUuid) {
-            await client.query(`UPDATE expense_ledger SET journal_uuid = $1 WHERE journal_id = $2;`, [
-              linkedJournalUuid,
-              journalId,
-            ]);
-            await client.query(`UPDATE receipt_queue SET journal_uuid = $1 WHERE receipt_id = $2;`, [
-              linkedJournalUuid,
-              t.receipt_id,
-            ]);
-          }
 
           await client.query("COMMIT");
           await markProcessed(t.receipt_id, journalId, extracted);

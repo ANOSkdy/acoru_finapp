@@ -83,15 +83,14 @@ export async function GET(req: Request) {
            )::numeric(18,2) AS income,
            SUM(
              CASE
-               WHEN debit_account ILIKE '%現金%'
-                 OR debit_account ILIKE '%預金%'
-                 OR debit_account ILIKE '%未払金%'
-                 OR debit_account ILIKE '%買掛金%'
-                 OR debit_account ILIKE '%売掛金%'
-                 OR debit_account ILIKE '%クレジット%'
-                 OR debit_account ILIKE '%カード%'
+               WHEN credit_account ILIKE '%売上%'
+                 OR credit_account ILIKE '%収入%'
+                 OR credit_account ILIKE '%入金%'
+                 OR credit_account ILIKE '%sales%'
+                 OR credit_account ILIKE '%revenue%'
+                 OR credit_account ILIKE '%income%'
                THEN 0
-               ELSE COALESCE(debit_amount, 0)
+               ELSE COALESCE(debit_amount, credit_amount, 0)
              END
            )::numeric(18,2) AS expense,
            COUNT(*)::int AS row_count

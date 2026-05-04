@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 const navItems = [
+  { href: "/dashboard", label: "Dashboard", sub: "月次収支" },
   { href: "/recordlists", label: "Record List", sub: "台帳一覧" },
   { href: "/upload", label: "Upload", sub: "領収書" },
 ];

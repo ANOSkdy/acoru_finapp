@@ -1,13 +1,12 @@
 @import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #242323;
-  --brand-blue: #3895ff;
-  --brand-red: #f24f4f;
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-}
+@import "./styles/base.css";
+@import "./styles/shell-layout.css";
+@import "./styles/shell-nav.css";
+@import "./styles/header.css";
+@import "./styles/page-type.css";
+@import "./styles/cards.css";
+@import "./styles/inputs.css";
+@import "./styles/upload.css";
+@import "./styles/table-base.css";
+@import "./styles/table-states.css";
+@import "./styles/kpi.css";

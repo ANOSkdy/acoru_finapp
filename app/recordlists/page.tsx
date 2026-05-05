@@ -102,6 +102,16 @@ const COLUMNS: Array<{ key: SortBy; label: string; editable?: EditableField }> =
   { key: "memo", label: "メモ", editable: "memo" },
 ];
 
+function currentFiscalYearFromMonth() {
+  const year = new Date().getFullYear();
+  return `${year}-01`;
+}
+
+function currentFiscalYearToMonth() {
+  const year = new Date().getFullYear();
+  return `${year}-12`;
+}
+
 function toDateInputValue(v: string) {
   if (!v) return "";
   return v.includes("T") ? v.slice(0, 10) : v;
@@ -125,6 +135,8 @@ function toPatchValue(field: EditableField, value: string) {
 
 export default function RecordListsPage() {
   const [q, setQ] = useState("");
+  const [from, setFrom] = useState(() => currentFiscalYearFromMonth());
+  const [to, setTo] = useState(() => currentFiscalYearToMonth());
   const [limit] = useState(PAGE_SIZE);
   const [offset, setOffset] = useState(0);
   const [sortBy, setSortBy] = useState<SortBy>("transaction_date");
@@ -154,12 +166,20 @@ export default function RecordListsPage() {
   const queryString = useMemo(() => {
     const sp = new URLSearchParams();
     if (q.trim()) sp.set("q", q.trim());
+    if (from) sp.set("from", from);
+    if (to) sp.set("to", to);
     sp.set("limit", String(limit));
     sp.set("offset", String(offset));
     sp.set("sortBy", sortBy);
     sp.set("sortOrder", sortOrder);
     return sp.toString();
-  }, [q, limit, offset, sortBy, sortOrder]);
+  }, [q, from, to, limit, offset, sortBy, sortOrder]);
+
+  function resetFiscalYearFilter() {
+    setFrom(currentFiscalYearFromMonth());
+    setTo(currentFiscalYearToMonth());
+    setOffset(0);
+  }
 
   function toInt(v: string): number {
     const n = Number(v);
@@ -356,6 +376,33 @@ export default function RecordListsPage() {
           </button>
           <button className="btn btn-secondary" onClick={() => void deleteSelectedRows()} disabled={deleting || selectedCount === 0}>
             削除
+          </button>
+          <label className="report-toolbar-field">
+            <span className="record-meta">from</span>
+            <input
+              className="record-input"
+              type="month"
+              value={from}
+              onChange={(e) => {
+                setFrom(e.target.value);
+                setOffset(0);
+              }}
+            />
+          </label>
+          <label className="report-toolbar-field">
+            <span className="record-meta">to</span>
+            <input
+              className="record-input"
+              type="month"
+              value={to}
+              onChange={(e) => {
+                setTo(e.target.value);
+                setOffset(0);
+              }}
+            />
+          </label>
+          <button className="btn btn-secondary" type="button" onClick={resetFiscalYearFilter}>
+            FYリセット
           </button>
           <input
             className="record-input"

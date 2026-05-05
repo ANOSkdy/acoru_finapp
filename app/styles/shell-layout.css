@@ -1,29 +1,24 @@
 .app-shell {
   min-height: 100dvh;
   background: #f5f8fc;
-  padding: 24px;
+  padding: 16px;
 }
 
 .app-container {
   width: 100%;
   max-width: 1480px;
-  min-height: calc(100dvh - 48px);
+  min-height: calc(100dvh - 32px);
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 286px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
   background: #fff;
   border: 1px solid rgba(56, 149, 255, .16);
-  border-radius: 24px;
+  border-radius: 18px;
 }
 
 .app-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  padding: 26px 20px;
-  background: #fff;
-  border-right: 1px solid var(--line);
+  display: none;
 }
 
 .app-content {
@@ -34,21 +29,22 @@
 }
 
 .app-header {
-  min-height: 236px;
+  min-height: 76px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding: 34px 42px 36px;
-  background: linear-gradient(135deg, rgba(56, 149, 255, .94), rgba(33, 77, 210, .96));
-  color: #fff;
+  gap: 16px;
+  padding: 14px 24px;
+  background: #fff;
+  color: var(--foreground);
+  border-bottom: 1px solid var(--line);
 }
 
 .app-main {
   flex: 1;
   min-width: 0;
-  padding: 34px 42px 56px;
-  background: linear-gradient(180deg, #fff 0%, #fbfcff 100%);
+  padding: 30px 42px 56px;
+  background: #fff;
 }
 
 .app-main > main,
@@ -64,19 +60,28 @@
 }
 
 @media (max-width: 1099px) {
-  .app-shell { padding: 0; }
+  .app-shell {
+    padding: 0;
+  }
+
   .app-container {
     min-height: 100dvh;
-    grid-template-columns: 1fr;
     border: 0;
     border-radius: 0;
   }
-  .app-sidebar { display: none; }
-  .app-header { min-height: 220px; padding: 28px 22px 30px; }
-  .app-main { padding: 24px 18px 44px; }
+
+  .app-header {
+    min-height: 72px;
+    padding: 12px 18px;
+  }
+
+  .app-main {
+    padding: 24px 18px 44px;
+  }
 }
 
 @media (max-width: 640px) {
-  .app-header { flex-direction: column; }
-  .app-header-actions { width: 100%; justify-content: flex-end; }
+  .app-header {
+    gap: 12px;
+  }
 }

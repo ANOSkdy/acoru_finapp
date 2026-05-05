@@ -41,31 +41,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell">
       <div className="app-container">
-        <aside className="app-sidebar" aria-label="Primary">
-          <Link className="brand-block" href="/recordlists">
-            <span className="brand-mark">A</span>
-            <span>
-              <span className="brand-eyebrow">Acoru FinApp</span>
-              <span className="brand-title">経費ワークスペース</span>
-            </span>
-          </Link>
-
-          <NavLinks pathname={pathname} />
-
-          <div className="sidebar-card">
-            <span className="tag tag-campaign">Finance Ops</span>
-            <strong>領収書から月次把握まで、最短導線で整理。</strong>
-            <p>アップロード、台帳修正、収支確認を1つの操作面に集約します。</p>
-          </div>
-        </aside>
-
         <div className="app-content">
           <header className="app-header">
-            <div className="app-header-copy">
-              <span className="tag tag-organizer">Acoru主催</span>
-              <h1>経費ワークスペース</h1>
-              <p>レシート登録、仕訳台帳、月次収支をすばやく確認できます。</p>
-            </div>
+            <Link className="brand-block app-header-brand" href="/recordlists">
+              <span className="brand-mark">A</span>
+              <span>
+                <span className="brand-eyebrow">Acoru FinApp</span>
+                <span className="brand-title">経費ワークスペース</span>
+              </span>
+            </Link>
+
             <div className="app-header-actions">
               <Link className="btn header-cta" href="/upload">
                 領収書を追加

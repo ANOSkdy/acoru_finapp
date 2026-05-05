@@ -1,22 +1,5 @@
-.app-header-copy {
-  max-width: 760px;
-  display: grid;
-  gap: 14px;
-}
-
-.app-header-copy h1 {
-  margin: 0;
-  font-size: 3.44rem;
-  font-weight: 700;
-  line-height: 1.6;
-}
-
-.app-header-copy p {
-  max-width: 620px;
-  margin: 0;
-  color: rgba(255, 255, 255, .92);
-  font-size: 1.1rem;
-  line-height: 1.8;
+.app-header-brand {
+  min-width: 0;
 }
 
 .app-header-actions {
@@ -26,31 +9,28 @@
 }
 
 .header-cta {
-  background: #fff;
-  color: var(--brand-blue-dark);
-  border-color: #fff;
+  background: var(--brand-blue);
+  color: #fff;
+  border-color: var(--brand-blue);
   white-space: nowrap;
 }
 
 .menu-toggle {
-  display: none;
-  width: 46px;
-  height: 46px;
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, .72);
-  background: rgba(255, 255, 255, .12);
-  color: #fff;
-  font-size: 1.35rem;
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  color: var(--brand-blue-dark);
+  font-size: 1.25rem;
   line-height: 1;
 }
 
-@media (max-width: 1099px) {
-  .header-cta { display: none; }
-  .menu-toggle { display: inline-flex; }
-}
-
 @media (max-width: 640px) {
-  .app-header-copy h1 { font-size: 2.25rem; }
+  .header-cta {
+    display: none;
+  }
 }

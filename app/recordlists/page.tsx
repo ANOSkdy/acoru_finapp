@@ -76,6 +76,7 @@ type EditingCell = {
 };
 
 const PAGE_SIZE = 100;
+const CONTROL_HEIGHT = 44;
 const EDITABLE_FIELDS: EditableField[] = [
   "transaction_date",
   "debit_account",
@@ -101,6 +102,16 @@ const COLUMNS: Array<{ key: SortBy; label: string; editable?: EditableField }> =
   { key: "description", label: "摘要", editable: "description" },
   { key: "memo", label: "メモ", editable: "memo" },
 ];
+
+function currentFiscalYearFromMonth() {
+  const year = new Date().getFullYear();
+  return `${year}-01`;
+}
+
+function currentFiscalYearToMonth() {
+  const year = new Date().getFullYear();
+  return `${year}-12`;
+}
 
 function toDateInputValue(v: string) {
   if (!v) return "";
@@ -154,6 +165,8 @@ export default function RecordListsPage() {
   const queryString = useMemo(() => {
     const sp = new URLSearchParams();
     if (q.trim()) sp.set("q", q.trim());
+    sp.set("from", currentFiscalYearFromMonth());
+    sp.set("to", currentFiscalYearToMonth());
     sp.set("limit", String(limit));
     sp.set("offset", String(offset));
     sp.set("sortBy", sortBy);
@@ -344,21 +357,29 @@ export default function RecordListsPage() {
       <p className="page-subtitle">仕訳を一覧で確認し、セルをダブルクリックして編集します。</p>
 
       <div className="record-toolbar">
-        <section className="record-controls record-controls-desktop">
+        <section className="record-controls" style={{ alignItems: "center" }}>
           <button
             className="btn"
+            style={{ height: CONTROL_HEIGHT, minWidth: 96, whiteSpace: "nowrap" }}
             onClick={() => {
               if (!draftRow) resetDraft();
             }}
             disabled={Boolean(draftRow)}
           >
-            新規登録
+            新規
           </button>
-          <button className="btn btn-secondary" onClick={() => void deleteSelectedRows()} disabled={deleting || selectedCount === 0}>
+          <button
+            className="btn btn-secondary"
+            style={{ height: CONTROL_HEIGHT, minWidth: 96, whiteSpace: "nowrap" }}
+            onClick={() => void deleteSelectedRows()}
+            disabled={deleting || selectedCount === 0}
+          >
             削除
           </button>
+
           <input
             className="record-input"
+            style={{ height: CONTROL_HEIGHT, flex: "1 1 360px", minWidth: 260 }}
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
@@ -367,21 +388,25 @@ export default function RecordListsPage() {
             placeholder="検索（仕訳ID/店名/科目/摘要/メモ/receipt_idなど）"
           />
 
-          <span className="record-meta">100件/ページ固定</span>
+          <span className="record-meta" style={{ whiteSpace: "nowrap" }}>
+            100件/ページ固定
+          </span>
 
-          <div className="record-actions record-actions-pager">
+          <div className="record-actions record-actions-pager" style={{ alignItems: "center" }}>
             <button
               className="btn btn-secondary"
+              style={{ height: CONTROL_HEIGHT, minWidth: 72, whiteSpace: "nowrap" }}
               disabled={loading || !canPrev}
               onClick={() => setOffset(Math.max(0, offset - limit))}
             >
               前へ
             </button>
-            <span className="record-meta">
+            <span className="record-meta" style={{ whiteSpace: "nowrap" }}>
               {total === 0 ? "0" : `${offset + 1}-${Math.min(offset + limit, total)}`} / {total}
             </span>
             <button
               className="btn btn-secondary"
+              style={{ height: CONTROL_HEIGHT, minWidth: 72, whiteSpace: "nowrap" }}
               disabled={loading || !canNext}
               onClick={() => setOffset(offset + limit)}
             >

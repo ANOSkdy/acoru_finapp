@@ -5,6 +5,8 @@ import { pool } from "@/lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const MonthSchema = z.string().regex(/^\d{4}-\d{2}$/);
+
 const SORTABLE_COLUMN_MAP = {
   journal_id: "journal_id",
   transaction_date: "transaction_date",
@@ -19,27 +21,34 @@ const SORTABLE_COLUMN_MAP = {
   created_at: "created_at",
 } as const;
 
-const QuerySchema = z.object({
-  q: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(100),
-  offset: z.coerce.number().int().min(0).default(0),
-  sortBy: z
-    .enum([
-      "journal_id",
-      "transaction_date",
-      "debit_account",
-      "debit_vendor",
-      "debit_tax",
-      "debit_amount",
-      "credit_account",
-      "credit_amount",
-      "description",
-      "memo",
-      "created_at",
-    ])
-    .default("transaction_date"),
-  sortOrder: z.enum(["asc", "desc"]).default("desc"),
-});
+const QuerySchema = z
+  .object({
+    q: z.string().optional(),
+    from: MonthSchema.optional(),
+    to: MonthSchema.optional(),
+    limit: z.coerce.number().int().min(1).max(200).default(100),
+    offset: z.coerce.number().int().min(0).default(0),
+    sortBy: z
+      .enum([
+        "journal_id",
+        "transaction_date",
+        "debit_account",
+        "debit_vendor",
+        "debit_tax",
+        "debit_amount",
+        "credit_account",
+        "credit_amount",
+        "description",
+        "memo",
+        "created_at",
+      ])
+      .default("transaction_date"),
+    sortOrder: z.enum(["asc", "desc"]).default("desc"),
+  })
+  .refine((v) => !v.from || !v.to || v.from <= v.to, {
+    message: "from must be before or equal to to",
+    path: ["from"],
+  });
 
 const CreateSchema = z
   .object({
@@ -79,44 +88,48 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const parsed = QuerySchema.parse(Object.fromEntries(url.searchParams.entries()));
 
+    const clauses: string[] = [];
+    const params: Array<string | number> = [];
+
     const q = parsed.q?.trim();
-    const like = q ? `%${q}%` : null;
+    if (q) {
+      params.push(`%${q}%`);
+      const p = `$${params.length}`;
+      clauses.push(`(
+        journal_id::text ILIKE ${p}
+        OR transaction_date::text ILIKE ${p}
+        OR debit_account ILIKE ${p}
+        OR debit_vendor ILIKE ${p}
+        OR credit_account ILIKE ${p}
+        OR description ILIKE ${p}
+        OR memo ILIKE ${p}
+        OR drive_file_id ILIKE ${p}
+        OR drive_file_name ILIKE ${p}
+      )`);
+    }
 
-    const where = q
-      ? `
-        WHERE
-          journal_id::text ILIKE $1
-          OR transaction_date::text ILIKE $1
-          OR debit_account ILIKE $1
-          OR debit_vendor ILIKE $1
-          OR credit_account ILIKE $1
-          OR description ILIKE $1
-          OR memo ILIKE $1
-          OR drive_file_id ILIKE $1
-          OR drive_file_name ILIKE $1
-      `
-      : "";
+    if (parsed.from) {
+      params.push(`${parsed.from}-01`);
+      clauses.push(`transaction_date >= $${params.length}::date`);
+    }
 
+    if (parsed.to) {
+      params.push(`${parsed.to}-01`);
+      clauses.push(`transaction_date < ($${params.length}::date + interval '1 month')`);
+    }
+
+    const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
     const countSql = `SELECT COUNT(*)::int AS total FROM expense_ledger ${where};`;
 
     const sortColumn = SORTABLE_COLUMN_MAP[parsed.sortBy];
     const sortOrder = parsed.sortOrder.toUpperCase();
     const orderByClause = `ORDER BY ${sortColumn} ${sortOrder}, created_at DESC`;
 
-    const listSqlNoQ = `
-      SELECT
-        journal_id, transaction_date,
-        debit_account, debit_vendor, debit_amount, debit_tax, debit_invoice_category,
-        credit_account, credit_vendor, credit_amount, credit_tax, credit_invoice_category,
-        description, memo,
-        drive_file_id, drive_file_name, drive_mime_type,
-        created_at, processed_at
-      FROM expense_ledger
-      ${orderByClause}
-      LIMIT $1 OFFSET $2;
-    `;
+    const listParams = [...params, parsed.limit, parsed.offset];
+    const limitIndex = listParams.length - 1;
+    const offsetIndex = listParams.length;
 
-    const listSqlWithQ = `
+    const listSql = `
       SELECT
         journal_id, transaction_date,
         debit_account, debit_vendor, debit_amount, debit_tax, debit_invoice_category,
@@ -127,15 +140,12 @@ export async function GET(req: Request) {
       FROM expense_ledger
       ${where}
       ${orderByClause}
-      LIMIT $2 OFFSET $3;
+      LIMIT $${limitIndex} OFFSET $${offsetIndex};
     `;
 
-    const countParams = q ? [like] : [];
-    const listParams = q ? [like, parsed.limit, parsed.offset] : [parsed.limit, parsed.offset];
-
     const [countRes, listRes] = await Promise.all([
-      pool.query<{ total: number }>(countSql, countParams),
-      pool.query(listSqlWithQ && q ? listSqlWithQ : listSqlNoQ, listParams),
+      pool.query<{ total: number }>(countSql, params),
+      pool.query(listSql, listParams),
     ]);
 
     return NextResponse.json({
@@ -146,6 +156,9 @@ export async function GET(req: Request) {
       rows: listRes.rows,
     });
   } catch (e: unknown) {
+    if (e && typeof e === "object" && "name" in e && (e as { name?: string }).name === "ZodError") {
+      return jsonError("Validation error", 400, e);
+    }
     const message = e instanceof Error ? e.message : String(e);
     console.error("GET /api/ledger error", message);
     return NextResponse.json({ ok: false, error: { message } }, { status: 500 });

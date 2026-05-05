@@ -28,18 +28,12 @@ function currentMonth() {
   return new Date().toISOString().slice(0, 7);
 }
 
-function monthsAgo(months: number) {
-  const now = new Date();
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - months, 1));
-  return d.toISOString().slice(0, 7);
-}
-
 function yen(value: number) {
   return `${Math.round(value).toLocaleString("ja-JP")}円`;
 }
 
 export default function DashboardPage() {
-  const [from, setFrom] = useState(() => monthsAgo(11));
+  const [from, setFrom] = useState(() => currentMonth());
   const [to, setTo] = useState(() => currentMonth());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

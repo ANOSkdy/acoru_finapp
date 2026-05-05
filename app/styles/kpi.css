@@ -1,0 +1,22 @@
+.kpi-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.kpi-card strong {
+  color: var(--brand-red);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.report-toolbar-field {
+  display: grid;
+  gap: 6px;
+}
+
+.report-toolbar-search {
+  min-width: 220px;
+  flex: 1 1 260px;
+}

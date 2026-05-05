@@ -1,0 +1,15 @@
+.page-title {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 2.625rem;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.page-subtitle {
+  max-width: 760px;
+  margin: 0;
+  color: var(--text-sub);
+  font-size: 1rem;
+  line-height: 1.8;
+}

@@ -1,0 +1,72 @@
+.record-input,
+.record-select {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--foreground);
+  font-size: .95rem;
+  line-height: 1.4;
+  outline: none;
+}
+
+textarea.record-input {
+  min-height: 72px;
+}
+
+.record-input:focus,
+.record-select:focus {
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 3px rgba(56, 149, 255, .14);
+}
+
+.record-list-item,
+.record-card {
+  padding: 18px;
+}
+
+.record-list-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-weight: 700;
+}
+
+.record-list-text {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-list-amount {
+  min-width: 96px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.record-field {
+  display: grid;
+  gap: 4px;
+}
+
+.record-label {
+  color: var(--text-sub);
+  font-size: .75rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .record-input,
+  .record-select,
+  .btn {
+    width: 100%;
+  }
+
+  .record-actions .btn,
+  .record-inline-actions .btn {
+    width: auto;
+  }
+}

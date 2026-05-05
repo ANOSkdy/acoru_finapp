@@ -5,10 +5,34 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", sub: "月次収支" },
-  { href: "/recordlists", label: "Record List", sub: "台帳一覧" },
-  { href: "/upload", label: "Upload", sub: "領収書" },
+  { href: "/dashboard", label: "Dashboard", sub: "月次収支", badge: "分析" },
+  { href: "/recordlists", label: "Record List", sub: "仕訳台帳", badge: "編集" },
+  { href: "/upload", label: "Upload", sub: "領収書登録", badge: "取込" },
 ];
+
+function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+  return (
+    <div className="app-nav-list">
+      {navItems.map((item) => {
+        const active = pathname === item.href;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`nav-link${active ? " active" : ""}`}
+            onClick={onNavigate}
+          >
+            <span className="nav-link-main">
+              <span>{item.label}</span>
+              <span className="nav-badge">{item.badge}</span>
+            </span>
+            <span className="record-meta">{item.sub}</span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -17,44 +41,62 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell">
       <div className="app-container">
-        <header className="app-header">
-          <div>
-            <div className="record-meta">Acoru 経費台帳</div>
-            <h1>経費ワークスペース</h1>
+        <aside className="app-sidebar" aria-label="Primary">
+          <Link className="brand-block" href="/recordlists">
+            <span className="brand-mark">A</span>
+            <span>
+              <span className="brand-eyebrow">Acoru FinApp</span>
+              <span className="brand-title">経費ワークスペース</span>
+            </span>
+          </Link>
+
+          <NavLinks pathname={pathname} />
+
+          <div className="sidebar-card">
+            <span className="tag tag-campaign">Finance Ops</span>
+            <strong>領収書から月次把握まで、最短導線で整理。</strong>
+            <p>アップロード、台帳修正、収支確認を1つの操作面に集約します。</p>
           </div>
-          <button
-            type="button"
-            className="menu-toggle"
-            aria-label="メニューを開く"
-            aria-expanded={menuOpen}
-            aria-controls="global-nav"
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            ☰
-          </button>
-        </header>
-        <main className="app-main">{children}</main>
+        </aside>
+
+        <div className="app-content">
+          <header className="app-header">
+            <div className="app-header-copy">
+              <span className="tag tag-organizer">Acoru主催</span>
+              <h1>経費ワークスペース</h1>
+              <p>レシート登録、仕訳台帳、月次収支をすばやく確認できます。</p>
+            </div>
+            <div className="app-header-actions">
+              <Link className="btn header-cta" href="/upload">
+                領収書を追加
+              </Link>
+              <button
+                type="button"
+                className="menu-toggle"
+                aria-label="メニューを開く"
+                aria-expanded={menuOpen}
+                aria-controls="global-nav"
+                onClick={() => setMenuOpen((v) => !v)}
+              >
+                ☰
+              </button>
+            </div>
+          </header>
+          <main className="app-main">{children}</main>
+        </div>
       </div>
 
       {menuOpen ? <button className="menu-backdrop" aria-label="メニューを閉じる" onClick={() => setMenuOpen(false)} /> : null}
 
       <nav id="global-nav" className={`hamburger-nav${menuOpen ? " open" : ""}`} aria-label="Primary">
-        <div className="hamburger-nav-inner">
-          {navItems.map((item) => {
-            const active = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`nav-link${active ? " active" : ""}`}
-                onClick={() => setMenuOpen(false)}
-              >
-                <span>{item.label}</span>
-                <span className="record-meta">{item.sub}</span>
-              </Link>
-            );
-          })}
+        <div className="mobile-nav-header">
+          <span className="brand-mark">A</span>
+          <div>
+            <div className="brand-eyebrow">Acoru FinApp</div>
+            <strong>メニュー</strong>
+          </div>
         </div>
+        <NavLinks pathname={pathname} onNavigate={() => setMenuOpen(false)} />
       </nav>
     </div>
   );

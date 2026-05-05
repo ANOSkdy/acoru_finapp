@@ -1,0 +1,79 @@
+.upload-card {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.upload-drop {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  gap: 10px;
+  padding: 28px;
+  text-align: center;
+  border: 2px dashed rgba(56, 149, 255, .62);
+  border-radius: 6px;
+  background: #eef6ff;
+}
+
+.upload-drop strong {
+  color: var(--brand-blue-dark);
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.upload-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.upload-actions {
+  position: sticky;
+  bottom: calc(env(safe-area-inset-bottom) + 18px);
+  z-index: 5;
+  padding: 14px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .94);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.upload-results {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.upload-result {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  font-size: .92rem;
+}
+
+@media (min-width: 900px) {
+  .upload-actions {
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .upload-actions .record-actions {
+    flex-wrap: nowrap;
+  }
+}

@@ -1,0 +1,38 @@
+.record-toolbar,
+.report-toolbar,
+.record-card,
+.kpi-card,
+.record-list-item {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.record-toolbar,
+.report-toolbar,
+.record-card,
+.kpi-card {
+  padding: 18px;
+}
+
+.record-toolbar,
+.record-card,
+.record-cards,
+.record-list,
+.kpi-card {
+  display: grid;
+  gap: 14px;
+}
+
+.record-controls,
+.record-actions,
+.report-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.report-toolbar {
+  align-items: end;
+}

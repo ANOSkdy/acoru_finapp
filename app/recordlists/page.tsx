@@ -76,6 +76,7 @@ type EditingCell = {
 };
 
 const PAGE_SIZE = 100;
+const CONTROL_HEIGHT = 44;
 const EDITABLE_FIELDS: EditableField[] = [
   "transaction_date",
   "debit_account",
@@ -135,8 +136,6 @@ function toPatchValue(field: EditableField, value: string) {
 
 export default function RecordListsPage() {
   const [q, setQ] = useState("");
-  const [from, setFrom] = useState(() => currentFiscalYearFromMonth());
-  const [to, setTo] = useState(() => currentFiscalYearToMonth());
   const [limit] = useState(PAGE_SIZE);
   const [offset, setOffset] = useState(0);
   const [sortBy, setSortBy] = useState<SortBy>("transaction_date");
@@ -166,20 +165,14 @@ export default function RecordListsPage() {
   const queryString = useMemo(() => {
     const sp = new URLSearchParams();
     if (q.trim()) sp.set("q", q.trim());
-    if (from) sp.set("from", from);
-    if (to) sp.set("to", to);
+    sp.set("from", currentFiscalYearFromMonth());
+    sp.set("to", currentFiscalYearToMonth());
     sp.set("limit", String(limit));
     sp.set("offset", String(offset));
     sp.set("sortBy", sortBy);
     sp.set("sortOrder", sortOrder);
     return sp.toString();
-  }, [q, from, to, limit, offset, sortBy, sortOrder]);
-
-  function resetFiscalYearFilter() {
-    setFrom(currentFiscalYearFromMonth());
-    setTo(currentFiscalYearToMonth());
-    setOffset(0);
-  }
+  }, [q, limit, offset, sortBy, sortOrder]);
 
   function toInt(v: string): number {
     const n = Number(v);
@@ -364,10 +357,10 @@ export default function RecordListsPage() {
       <p className="page-subtitle">仕訳を一覧で確認し、セルをダブルクリックして編集します。</p>
 
       <div className="record-toolbar">
-        <section className="record-controls">
+        <section className="record-controls" style={{ alignItems: "center" }}>
           <button
             className="btn"
-            style={{ minWidth: 88, whiteSpace: "nowrap" }}
+            style={{ height: CONTROL_HEIGHT, minWidth: 96, whiteSpace: "nowrap" }}
             onClick={() => {
               if (!draftRow) resetDraft();
             }}
@@ -377,49 +370,16 @@ export default function RecordListsPage() {
           </button>
           <button
             className="btn btn-secondary"
-            style={{ minWidth: 88, whiteSpace: "nowrap" }}
+            style={{ height: CONTROL_HEIGHT, minWidth: 96, whiteSpace: "nowrap" }}
             onClick={() => void deleteSelectedRows()}
             disabled={deleting || selectedCount === 0}
           >
             削除
           </button>
 
-          <label className="report-toolbar-field" style={{ minWidth: 180 }}>
-            <span className="record-meta">from</span>
-            <input
-              className="record-input"
-              type="month"
-              value={from}
-              onChange={(e) => {
-                setFrom(e.target.value);
-                setOffset(0);
-              }}
-            />
-          </label>
-          <label className="report-toolbar-field" style={{ minWidth: 180 }}>
-            <span className="record-meta">to</span>
-            <input
-              className="record-input"
-              type="month"
-              value={to}
-              onChange={(e) => {
-                setTo(e.target.value);
-                setOffset(0);
-              }}
-            />
-          </label>
-          <button
-            className="btn btn-secondary"
-            type="button"
-            style={{ minWidth: 88, whiteSpace: "nowrap" }}
-            onClick={resetFiscalYearFilter}
-          >
-            今年
-          </button>
-
           <input
             className="record-input"
-            style={{ flex: "1 1 280px", minWidth: 220 }}
+            style={{ height: CONTROL_HEIGHT, flex: "1 1 360px", minWidth: 260 }}
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
@@ -432,10 +392,10 @@ export default function RecordListsPage() {
             100件/ページ固定
           </span>
 
-          <div className="record-actions record-actions-pager">
+          <div className="record-actions record-actions-pager" style={{ alignItems: "center" }}>
             <button
               className="btn btn-secondary"
-              style={{ minWidth: 72, whiteSpace: "nowrap" }}
+              style={{ height: CONTROL_HEIGHT, minWidth: 72, whiteSpace: "nowrap" }}
               disabled={loading || !canPrev}
               onClick={() => setOffset(Math.max(0, offset - limit))}
             >
@@ -446,7 +406,7 @@ export default function RecordListsPage() {
             </span>
             <button
               className="btn btn-secondary"
-              style={{ minWidth: 72, whiteSpace: "nowrap" }}
+              style={{ height: CONTROL_HEIGHT, minWidth: 72, whiteSpace: "nowrap" }}
               disabled={loading || !canNext}
               onClick={() => setOffset(offset + limit)}
             >

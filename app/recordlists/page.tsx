@@ -364,20 +364,27 @@ export default function RecordListsPage() {
       <p className="page-subtitle">仕訳を一覧で確認し、セルをダブルクリックして編集します。</p>
 
       <div className="record-toolbar">
-        <section className="record-controls record-controls-desktop">
+        <section className="record-controls">
           <button
             className="btn"
+            style={{ minWidth: 88, whiteSpace: "nowrap" }}
             onClick={() => {
               if (!draftRow) resetDraft();
             }}
             disabled={Boolean(draftRow)}
           >
-            新規登録
+            新規
           </button>
-          <button className="btn btn-secondary" onClick={() => void deleteSelectedRows()} disabled={deleting || selectedCount === 0}>
+          <button
+            className="btn btn-secondary"
+            style={{ minWidth: 88, whiteSpace: "nowrap" }}
+            onClick={() => void deleteSelectedRows()}
+            disabled={deleting || selectedCount === 0}
+          >
             削除
           </button>
-          <label className="report-toolbar-field">
+
+          <label className="report-toolbar-field" style={{ minWidth: 180 }}>
             <span className="record-meta">from</span>
             <input
               className="record-input"
@@ -389,7 +396,7 @@ export default function RecordListsPage() {
               }}
             />
           </label>
-          <label className="report-toolbar-field">
+          <label className="report-toolbar-field" style={{ minWidth: 180 }}>
             <span className="record-meta">to</span>
             <input
               className="record-input"
@@ -401,11 +408,18 @@ export default function RecordListsPage() {
               }}
             />
           </label>
-          <button className="btn btn-secondary" type="button" onClick={resetFiscalYearFilter}>
-            FYリセット
+          <button
+            className="btn btn-secondary"
+            type="button"
+            style={{ minWidth: 88, whiteSpace: "nowrap" }}
+            onClick={resetFiscalYearFilter}
+          >
+            今年
           </button>
+
           <input
             className="record-input"
+            style={{ flex: "1 1 280px", minWidth: 220 }}
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
@@ -414,21 +428,25 @@ export default function RecordListsPage() {
             placeholder="検索（仕訳ID/店名/科目/摘要/メモ/receipt_idなど）"
           />
 
-          <span className="record-meta">100件/ページ固定</span>
+          <span className="record-meta" style={{ whiteSpace: "nowrap" }}>
+            100件/ページ固定
+          </span>
 
           <div className="record-actions record-actions-pager">
             <button
               className="btn btn-secondary"
+              style={{ minWidth: 72, whiteSpace: "nowrap" }}
               disabled={loading || !canPrev}
               onClick={() => setOffset(Math.max(0, offset - limit))}
             >
               前へ
             </button>
-            <span className="record-meta">
+            <span className="record-meta" style={{ whiteSpace: "nowrap" }}>
               {total === 0 ? "0" : `${offset + 1}-${Math.min(offset + limit, total)}`} / {total}
             </span>
             <button
               className="btn btn-secondary"
+              style={{ minWidth: 72, whiteSpace: "nowrap" }}
               disabled={loading || !canNext}
               onClick={() => setOffset(offset + limit)}
             >

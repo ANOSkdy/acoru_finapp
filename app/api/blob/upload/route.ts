@@ -10,15 +10,17 @@ const PayloadSchema = z.object({
   receiptId: z.string().uuid(),
 });
 
+type HandleUploadBody = Parameters<typeof handleUpload>[0]["body"];
+
 function jsonError(message: string, status = 400, details?: unknown) {
   return NextResponse.json({ ok: false, error: { message, details } }, { status });
 }
 
 export async function POST(request: Request) {
   try {
-    let body: unknown;
+    let body: HandleUploadBody;
     try {
-      body = await request.json();
+      body = (await request.json()) as HandleUploadBody;
     } catch {
       return jsonError("Invalid upload request body", 400);
     }

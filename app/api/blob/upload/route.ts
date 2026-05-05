@@ -4,20 +4,37 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const PayloadSchema = z.object({
   receiptId: z.string().uuid(),
 });
 
-export async function POST(request: Request) {
-  const body = await request.json();
+function jsonError(message: string, status = 400, details?: unknown) {
+  return NextResponse.json({ ok: false, error: { message, details } }, { status });
+}
 
+export async function POST(request: Request) {
   try {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonError("Invalid upload request body", 400);
+    }
+
     const jsonResponse = await handleUpload({
       request,
       body,
       onBeforeGenerateToken: async (_pathname, clientPayload) => {
-        const parsed = PayloadSchema.parse(JSON.parse(clientPayload ?? "{}"));
+        let payload: unknown;
+        try {
+          payload = JSON.parse(clientPayload ?? "{}");
+        } catch {
+          throw new Error("Invalid clientPayload JSON");
+        }
+
+        const parsed = PayloadSchema.parse(payload);
 
         return {
           allowedContentTypes: ["image/jpeg", "image/png", "application/pdf"],
@@ -36,6 +53,6 @@ export async function POST(request: Request) {
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
     console.error("blob upload route error", message);
-    return NextResponse.json({ ok: false, error: { message } }, { status: 400 });
+    return jsonError(message, 400);
   }
 }

@@ -1,0 +1,48 @@
+.record-grid th:last-child,
+.record-grid td:last-child,
+.report-grid th:last-child,
+.report-grid td:last-child {
+  border-right: none;
+}
+
+.record-grid thead th,
+.report-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #eef6ff;
+  color: var(--brand-blue-dark);
+  font-weight: 700;
+}
+
+.record-grid tbody tr:hover td,
+.report-grid tbody tr:hover td {
+  background: #fbfdff;
+}
+
+.record-grid-row-draft td {
+  background: #fff7f7;
+}
+
+.record-check-col {
+  width: 44px;
+  min-width: 44px;
+  text-align: center !important;
+}
+
+.record-sort-btn {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--brand-blue-dark);
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.record-sort-btn.active,
+.record-sort-mark {
+  color: var(--brand-red);
+}

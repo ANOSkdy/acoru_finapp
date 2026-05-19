@@ -6,6 +6,9 @@ const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
 export type GeminiExtract = {
   store_name: string;
   transaction_date: string; // YYYY-MM-DD
+  currency_code?: string;
+  original_total_amount?: number | null;
+  original_tax_amount?: number | null;
   total_amount: number;
   tax_amount: number;
   invoice_category: "適格" | "区分記載";
@@ -20,6 +23,9 @@ const responseSchema = {
   properties: {
     store_name: { type: Type.STRING },
     transaction_date: { type: Type.STRING },
+    currency_code: { type: Type.STRING },
+    original_total_amount: { type: Type.NUMBER },
+    original_tax_amount: { type: Type.NUMBER },
     total_amount: { type: Type.INTEGER },
     tax_amount: { type: Type.INTEGER },
     invoice_category: { type: Type.STRING, enum: ["適格", "区分記載"] },
@@ -31,6 +37,9 @@ const responseSchema = {
   propertyOrdering: [
     "store_name",
     "transaction_date",
+    "currency_code",
+    "original_total_amount",
+    "original_tax_amount",
     "total_amount",
     "tax_amount",
     "invoice_category",
@@ -48,8 +57,11 @@ export async function analyzeReceipt(buffer: Buffer, mimeType: string): Promise<
 
 ルール:
 - transaction_date は YYYY-MM-DD。複数日付がある場合は 発行日 > 利用日 > 注文日。
-- total_amount は税込合計（円、整数）。読めない場合は推定しない。
-- tax_amount は消費税額（円、整数）。記載がなければ 0。
+- currency_code は領収書に記載された通貨を ISO 4217 の3文字コードで返す（日本円は JPY、米ドルは USD）。不明なら JPY。
+- original_total_amount は領収書に記載された通貨の税込合計。読めない場合は推定しない。
+- original_tax_amount は領収書に記載された通貨の税額。記載がなければ 0。
+- total_amount は JPY の場合のみ税込合計（円、整数）。外貨の場合は original_total_amount を整数化せず、最も近い整数でよい。円換算はサーバ側で行う。
+- tax_amount は JPY の場合のみ消費税額（円、整数）。外貨の場合は 0。
 - invoice_category は 適格請求書発行事業者登録番号があれば "適格"、なければ "区分記載"。
 - suggested_debit_account は品目から推定（迷う場合は "雑費"）。
 - items_summary は社内ルール判定に使うので「店名＋主要品目」を短く。

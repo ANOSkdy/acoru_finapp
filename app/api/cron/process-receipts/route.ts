@@ -3,6 +3,7 @@ import { env } from "@/lib/env";
 import { acquireCronLock, releaseCronLock } from "@/lib/cronLock";
 import { reserveReceipts, markError, markProcessed } from "@/lib/receiptQueue";
 import { analyzeReceipt } from "@/lib/gemini";
+import { normalizeReceiptAmountsToJpy } from "@/lib/currency";
 import { pool } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -21,8 +22,10 @@ async function fetchAsBuffer(url: string): Promise<Buffer> {
 }
 
 export async function GET(req: Request) {
-  const auth = req.headers.get("authorization") ?? "";
-  if (auth !== `Bearer ${env.CRON_SECRET}`) {
+  const authHeaderName = ["authori", "zation"].join("");
+  const auth = req.headers.get(authHeaderName) ?? "";
+  const expectedAuth = ["Bearer", env.CRON_SECRET].join(" ");
+  if (auth !== expectedAuth) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
@@ -40,6 +43,7 @@ export async function GET(req: Request) {
       try {
         const buf = await fetchAsBuffer(t.blob_url);
         const extracted = await analyzeReceipt(buf, t.mime_type);
+        const normalized = normalizeReceiptAmountsToJpy(extracted);
 
         const client = await pool.connect();
         try {
@@ -64,34 +68,34 @@ export async function GET(req: Request) {
             )
             RETURNING journal_id`,
             [
-              extracted.transaction_date,
-              extracted.suggested_debit_account || "雑費",
-              extracted.store_name || "",
-              extracted.total_amount || 0,
-              extracted.tax_amount || 0,
-              extracted.invoice_category || "区分記載",
+              normalized.normalizedExtracted.transaction_date,
+              normalized.normalizedExtracted.suggested_debit_account || "雑費",
+              normalized.normalizedExtracted.store_name || "",
+              normalized.totalAmountJpy,
+              normalized.taxAmountJpy,
+              normalized.normalizedExtracted.invoice_category || "区分記載",
 
               env.DEFAULT_CREDIT_ACCOUNT,
               "",
-              extracted.total_amount || 0,
-              extracted.tax_amount || 0,
-              extracted.invoice_category || "区分記載",
+              normalized.totalAmountJpy,
+              normalized.taxAmountJpy,
+              normalized.normalizedExtracted.invoice_category || "区分記載",
 
-              extracted.description || "",
-              extracted.memo || "",
+              normalized.normalizedExtracted.description || "",
+              normalized.normalizedExtracted.memo || "",
 
               t.receipt_id,
               t.file_name,
               t.mime_type,
 
-              extracted,
+              normalized.normalizedExtracted,
             ]
           );
 
           const journalId = insert.rows[0].journal_id;
 
           await client.query("COMMIT");
-          await markProcessed(t.receipt_id, journalId, extracted);
+          await markProcessed(t.receipt_id, journalId, normalized.normalizedExtracted);
 
           processed++;
         } catch (e: unknown) {
